@@ -12,35 +12,33 @@
 <br />
 <div align="center">
   <a href="https://github.com/alfred0404/lightseek-ocr">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+    <img src="images/logo.svg" alt="Logo" width="300">
   </a>
 
   <h3 align="center">LightSeek-OCR</h3>
 
   <p align="center">
-    Lightweight implementation and exploration of the DeepSeek-OCR concept.
+    Lightweight implementation and exploration of the DeepSeek-OCR architecture.
     <br />
     <a href="https://github.com/alfred0404/lightseek-ocr"><strong>Explore the repo »</strong></a>
   </p>
 </div>
 
-## English
 
-### About the project
+## About the project
 
 LightSeek-OCR is a lightweight, experimental re-implementation inspired by the DeepSeek-OCR idea: encode textual context as visual representations to help extend effective context windows for language models.
 
 This repository aims to provide a small, readable implementation so researchers and engineers can try the approach, reproduce experiments, and evaluate whether text-as-image compression can reduce token counts while preserving information.
 
-Key goals:
-
-- Provide a simple, well-documented implementation
-- Offer example pipelines for converting text -> image -> OCR-style embeddings
-- Enable reproducible experiments and easy extension
+<p align="center">
+    <img src="images/DeepSeek-OCR_Architecture.png" alt>
+    <em>Fig 1. DeepSeek-OCR Architecture</em>
+</p>
 
 <p align="center"><a href="#readme-top">back to top</a></p>
 
-### Getting started
+## Getting started
 
 Prerequisites
 
@@ -60,7 +58,7 @@ git clone https://github.com/alfred0404/lightseek-ocr.git
 cd lightseek-ocr
 ```
 
-### Usage
+## Usage
 
 - See the `examples/` folder for small demo scripts (text -> image -> evaluate).
 - Typical workflow:
@@ -68,7 +66,7 @@ cd lightseek-ocr
   2. Render text sections to images using the provided renderer.
   3. Run the OCR/encoder and evaluate compressed-context performance.
 
-### Contributing
+## Contributing
 
 Contributions are welcome. Please open issues for bugs or feature requests and submit pull requests for improvements.
 

@@ -30,6 +30,11 @@ LightSeek-OCR est une ré-implémentation légère et expérimentale inspirée p
 
 Le but de ce dépôt est de fournir une implémentation simple et lisible pour permettre aux chercheurs et développeurs d'expérimenter et d'évaluer si la compression texte->image peut réduire le nombre de tokens tout en conservant l'information.
 
+<p align="center">
+    <img src="images/DeepSeek-OCR_Architecture.png" alt>
+    <em>Fig 1. DeepSeek-OCR Architecture</em>
+</p>
+
 ## Démarrage
 
 Prérequis
@@ -71,7 +76,6 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 <p align="center"><a href="#readme-top">back to top</a></p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
-
 [contributors-shield]: https://img.shields.io/github/contributors/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [contributors-url]: https://github.com/alfred0404/lightseek-ocr/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/alfred0404/lightseek-ocr.svg?style=for-the-badge
@@ -89,5 +93,9 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 [Python]: https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&
 [Python-url]: https://www.python.org/
 
+<!-- Logo Colors -->
 [deepseek-blue]: #4d6bfe
 [deepseek-blue-complementary]: #E0C570
+
+<!-- Images -->
+[DeepSeek-OCR_Architecture_path]: images/DeepSeek-OCR_Architecture.png
