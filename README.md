@@ -21,7 +21,6 @@
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![project_license][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
 ## À propos du projet
@@ -103,11 +102,14 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 
 [license-shield]: https://img.shields.io/github/license/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [license-url]: https://github.com/alfred0404/lightseek-ocr/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 
 <!-- Linkedin -->
 
+[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/alfred-de-vulpian
+
+<!-- Other links -->
+
 [DeepSeek-OCR_GitHub]: https://github.com/deepseek-ai/DeepSeek-OCR/tree/main
 [Python]: https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&
 [Python-url]: https://www.python.org/
