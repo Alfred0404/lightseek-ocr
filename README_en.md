@@ -32,7 +32,7 @@ LightSeek-OCR is a lightweight, experimental re-implementation inspired by the D
 This repository aims to provide a small, readable implementation so researchers and engineers can try the approach, reproduce experiments, and evaluate whether text-as-image compression can reduce token counts while preserving information.
 
 <p align="center">
-    <img src="images/DeepSeek-OCR_Architecture.png" alt>
+    <img src="images/DeepSeek-OCR_Architecture.png" alt="Fig 1. DeepSeek-OCR Architecture" style="border-radius:5px">
     <em>Fig 1. DeepSeek-OCR Architecture</em>
 </p>
 
@@ -47,20 +47,20 @@ Prerequisites
 
 Install dependencies (recommended inside a virtual environment):
 
-```bash
-pip install -r requirements.txt
-```
-
 Clone the repository:
 
 ```bash
 git clone https://github.com/alfred0404/lightseek-ocr.git
 cd lightseek-ocr
+
+```bash
+pip install -r requirements.txt
+```
+
 ```
 
 ## Usage
 
-- See the `examples/` folder for small demo scripts (text -> image -> evaluate).
 - Typical workflow:
   1. Prepare a text corpus.
   2. Render text sections to images using the provided renderer.
@@ -81,29 +81,36 @@ Contributions are welcome. Please open issues for bugs or feature requests and s
 
 Distributed under the project license. See `LICENSE.txt` for details.
 
-## Contact
+<p align="center">
+	<img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/footers/gray0_ctp_on_line.svg?sanitize=true" />
+</p>
 
-Alfred de Vulpian - derfladv@gmail.com
-
-Project: https://github.com/alfred0404/lightseek-ocr
-
-<p align="center"><a href="#readme-top">back to top</a></p>
-
-<!-- MARKDOWN LINKS & IMAGES -->
-
+<!-- LINKS & IMAGES -->
+<!-- Contributors -->
 [contributors-shield]: https://img.shields.io/github/contributors/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [contributors-url]: https://github.com/alfred0404/lightseek-ocr/graphs/contributors
+<!-- Forks -->
 [forks-shield]: https://img.shields.io/github/forks/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [forks-url]: https://github.com/alfred0404/lightseek-ocr/network/members
+<!-- Stars -->
 [stars-shield]: https://img.shields.io/github/stars/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [stars-url]: https://github.com/alfred0404/lightseek-ocr/stargazers
+<!-- Issues -->
 [issues-shield]: https://img.shields.io/github/issues/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [issues-url]: https://github.com/alfred0404/lightseek-ocr/issues
+<!-- License -->
 [license-shield]: https://img.shields.io/github/license/alfred0404/lightseek-ocr.svg?style=for-the-badge
 [license-url]: https://github.com/alfred0404/lightseek-ocr/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
+<!-- Linkedin -->
 [linkedin-url]: https://linkedin.com/in/alfred-de-vulpian
-[DeepSeek-OCR]: https://github.com/deepseek-ai/DeepSeek-OCR/tree/main
-[product-screenshot]: images/screenshot.png
+[DeepSeek-OCR_GitHub]: https://github.com/deepseek-ai/DeepSeek-OCR/tree/main
 [Python]: https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&
 [Python-url]: https://www.python.org/
+
+<!-- Logo Colors -->
+[deepseek-blue]: #4d6bfe
+[deepseek-blue-complementary]: #E0C570
+
+<!-- Images -->
+[DeepSeek-OCR_Architecture_path]: images/DeepSeek-OCR_Architecture.png
