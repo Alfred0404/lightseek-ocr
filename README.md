@@ -12,15 +12,15 @@
 <br />
 <div align="center">
   <a href="https://github.com/alfred0404/lightseek-ocr">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+    <img src="images/logo.svg" alt="Logo" width="300">
   </a>
 
   <h3 align="center">LightSeek-OCR</h3>
 
   <p align="center">
-    Implémentation légère et exploration du concept DeepSeek-OCR.
+    Implémentation légère et exploration de l'architecture de DeepSeek-OCR.
     <br />
-    <a href="https://github.com/alfred0404/lightseek-ocr"><strong>Parcourir le dépôt »</strong></a>
+    <a href="https://github.com/alfred0404/lightseek-ocr"><strong>Parcourir le repo »</strong></a>
   </p>
 </div>
 
@@ -88,3 +88,6 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 [product-screenshot]: images/screenshot.png
 [Python]: https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&
 [Python-url]: https://www.python.org/
+
+[deepseek-blue]: #4d6bfe
+[deepseek-blue-complementary]: #E0C570
