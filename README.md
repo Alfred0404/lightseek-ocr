@@ -27,7 +27,7 @@
 
 LightSeek-OCR est une ré-implémentation légère et expérimentale inspirée par DeepSeek-OCR : convertir du texte en représentations visuelles afin d'étendre la fenêtre de contexte effective des modèles de langage.
 
-Le but de ce dépôt est de fournir une implémentation simple et lisible pour permettre aux chercheurs et développeurs d'expérimenter et d'évaluer si la compression texte->image peut réduire le nombre de tokens tout en conservant l'information.
+Le but de ce dépôt est de fournir une implémentation simple et lisible pour permettre aux chercheurs et développeurs d'expérimenter et d'évaluer si la compression texte $\rightarrow$ image peut réduire le nombre de tokens tout en conservant l'information.
 
 <p align="center">
     <img src="images/DeepSeek-OCR_Architecture.png" alt="Fig 1. DeepSeek-OCR Architecture" style="border-radius:5px">
@@ -70,12 +70,26 @@ Les contributions sont bienvenues : signalez des bugs via des issues et proposez
 Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 
 <p align="center">
+	<a href="https://github.com/alfred0404/lightseek-ocr/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&logoColor=d9e0ee&colorA=363a4f&colorB=b7bdf8"/></a>
+</p>
+
+## Ressources
+
+Même si les modèles ne seront pas recodés from scratch, il me parait important d'en comprendre le fonctionnement en profondeur.
+
+| Ressource | Description |
+| :--- | :--- |
+| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e) | Explication du modèle Segment Anything (SAM) sur Medium. |
+| [DeepSeek-OCR GitHub](https://github.com/deepseek-ai/DeepSeek-OCR/tree/main) | Dépôt GitHub officiel du projet DeepSeek-OCR. |
+| [SAM : Segment Anything – Meilleur Tutoriel](https://inside-machinelearning.com/sam-segment-anything/) | Tutoriel en français pour maîtriser SAM. |
+| [Segment Anything GitHub](https://github.com/facebookresearch/segment-anything) | Dépôt GitHub officiel du projet Segment Anything de Meta. |
+| [Sliding Window Attention](https://medium.com/@manojkumal/sliding-window-attention-565f963a1ffd) | Article Medium expliquant le mécanisme d'attention "Sliding Window". |
+| [What makes deepseek-ocr so powerful ?](https://learnopencv.com/what-makes-deepseek-ocr-so-powerful/) | Analyse par LearnOpenCV des forces de l'architecture DeepSeek-OCR. |
+
+<p align="center">
 	<img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/footers/gray0_ctp_on_line.svg?sanitize=true" />
 </p>
 
-<p align="center">
-	<a href="https://github.com/alfred0404/lightseek-ocr/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&logoColor=d9e0ee&colorA=363a4f&colorB=b7bdf8"/></a>
-</p>
 
 <!-- LINKS & IMAGES -->
 <!-- Contributors -->
