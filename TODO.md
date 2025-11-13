@@ -11,10 +11,10 @@
 
 ## Phase 1 : Environnement et Prérequis
 
-- [ ] **Mettre en place l'environnement :**
+- [x] **Mettre en place l'environnement :**
     - `pip install torch transformers`
     - (Optionnel) `pip install segment-anything` si vous utilisez le dépôt officiel, mais `transformers` est plus simple pour cette tâche.
-- [ ] **Valider les modèles :** Choisir les checkpoints à utiliser.
+- [x] **Valider les modèles :** Choisir les checkpoints à utiliser.
     - **SAM (Exemple) :** `facebook/sam-vit-base-patch16` (Dimensions : `D_sam = 768`)
     - **CLIP (Exemple) :** `openai/clip-vit-large-patch14` (Dimensions : `D_clip = 1024`)
 
@@ -24,15 +24,15 @@
 
 **Objectif :** Charger SAM et le configurer pour qu'il renvoie sa carte de caractéristiques interne (la sortie de l'encodeur).
 
-- [ ] **Charger le ViT de SAM :**
+- [x] **Charger le ViT de SAM :**
     - Utiliser `SamVisionModel` de `transformers` (plus simple que le dépôt SAM officiel pour la "chirurgie").
-    - `sam_model = SamVisionModel.from_pretrained("facebook/sam-vit-base-patch16")`
-- [ ] **Tester l'extraction :**
+    - `sam_model = SamVisionModel.from_pretrained("facebook/sam-vit-base")`
+- [x] **Tester l'extraction :**
     - Préparer une image "dummy" (ex: `torch.randn(1, 3, 1024, 1024)`).
     - Effectuer un *forward pass* : `outputs = sam_model(dummy_image)`
     - Récupérer la sortie de l'encodeur : `feature_map = outputs.last_hidden_state`
-- [ ] **Valider les dimensions :**
-    - Vérifier que `feature_map.shape` est `[Batch, 64, 64, 768]`. (Pour une image 1024x1024 avec patchs 16x16, `1024/16 = 64`).
+- [x] **Valider les dimensions :**
+    - Vérifier que `feature_map.shape` est `[Batch, 256, 64, 256]`. (Pour une image 1024x1024 avec patchs 16x16, `1024/16 = 64`).
     - *Note :* `transformers` renvoie `(B, H, W, D)`. C'est le format "Channels-Last".
 
 ---
@@ -41,17 +41,17 @@
 
 **Objectif :** Réduire la résolution spatiale de la carte de SAM d'un facteur 16.
 
-- [ ] **Définir la couche `Conv2d` :**
+- [x] **Définir la couche `Conv2d` :**
     - `in_channels = D_sam` (768)
     - `out_channels = D_clip` (1024, pour aligner directement sur la dimension de CLIP)
     - `kernel_size = 16`, `stride = 16`
     - `self.compressor = nn.Conv2d(768, 1024, kernel_size=16, stride=16)`
-- [ ] **Gérer le format des données (Crucial) :**
+- [x] **Gérer le format des données (Crucial) :**
     - `nn.Conv2d` attend un format "Channels-First" : `(B, C, H, W)`.
     - La sortie de SAM est "Channels-Last" : `(B, H, W, D)`.
     - **Action :** Il faut "permuter" (permute) les dimensions avant d'appliquer le `Conv2d`.
     - `feature_map = feature_map.permute(0, 3, 1, 2)` (devient `[B, 768, 64, 64]`)
-- [ ] **Valider la sortie du compresseur :**
+- [x] **Valider la sortie du compresseur :**
     - `compressed_map = self.compressor(feature_map)`
     - La forme de sortie doit être `[B, 1024, 4, 4]`. (Car `64 / 16 = 4`).
 
@@ -61,20 +61,20 @@
 
 **Objectif :** Injecter la carte compressée dans le "corps" de CLIP, en sautant sa couche d'embedding.
 
-- [ ] **Charger le ViT de CLIP :**
+- [x] **Charger le ViT de CLIP :**
     - `clip_model = CLIPVisionModel.from_pretrained("openai/clip-vit-large-patch14")`
     - `D_clip = clip_model.config.hidden_size` (validera 1024)
-- [ ] **Isoler les modules de CLIP :**
+- [x] **Isoler les modules de CLIP :**
     - La couche à **sauter** : `clip_model.embeddings`
     - Le corps à **utiliser** : `clip_model.encoder`
     - L'embedding positionnel (à gérer) : `clip_model.embeddings.position_embedding`
-- [ ] **Préparer les tokens pour l'injection :**
+- [x] **Préparer les tokens pour l'injection :**
     - La sortie du CNN est `[B, 1024, 4, 4]`.
     - Le `clip_model.encoder` attend une séquence de tokens : `(B, N, D)`.
     - **Action :** Aplatir (flatten) la dimension spatiale :
     - `tokens = compressed_map.flatten(2)` (devient `[B, 1024, 16]`)
     - `tokens = tokens.permute(0, 2, 1)` (devient `[B, 16, 1024]`, c'est-à-dire `(B, N, D)`)
-- [ ] **Gérer les Embeddings Positionnels (Point le plus complexe) :**
+- [x] **Gérer les Embeddings Positionnels (Point le plus complexe) :**
     - Le ViT de CLIP a des embeddings positionnels (PE) pré-calculés pour sa grille (ex: `[1, 257, 1024]`, soit 1 token [CLS] + grille 16x16=256).
     - Votre nouvelle grille est de `4x4 = 16` tokens.
     - **Solution :** Vous devez **interpoler en 2D** les PE de CLIP pour qu'ils matchent votre nouvelle grille de `4x4`.
