@@ -1,129 +1,137 @@
-# Cahier des Charges / Roadmap : Implémentation du DeepEncoder (SAM + CLIP)
+# TODO — LightSeek-OCR
 
-**Objectif :** Créer un module PyTorch `DeepEncoder` qui reproduit l'encodeur de DeepSeek-OCR, en fusionnant un extracteur local (SAM) et un extracteur global (CLIP).
-
-**Composants Clés :**
-1.  **Backbone SAM (ViTDet) :** Extracteur de caractéristiques locales haute résolution.
-2.  **Compresseur (CNN) :** Sous-échantillonneur spatial (pont).
-3.  **Corps de CLIP (ViT) :** Extracteur de caractéristiques globales basse résolution.
+Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décodeur).
 
 ---
 
-## Phase 1 : Environnement et Prérequis
+## Encodeur (DeepEncoder)
 
-- [x] **Mettre en place l'environnement :**
-    - `pip install torch transformers`
-    - (Optionnel) `pip install segment-anything` si vous utilisez le dépôt officiel, mais `transformers` est plus simple pour cette tâche.
-- [x] **Valider les modèles :** Choisir les checkpoints à utiliser.
-    - **SAM (Exemple) :** `facebook/sam-vit-base-patch16` (Dimensions : `D_sam = 768`)
-    - **CLIP (Exemple) :** `openai/clip-vit-large-patch14` (Dimensions : `D_clip = 1024`)
+### Architecture & Structure
 
----
+- [x] Créer l'architecture modulaire (SAMFeatureExtractor, CLIPVisionProcessor, Conv2DCompressor)
+- [x] Implémenter la classe `DeepEncoder` orchestrant le pipeline complet
+- [x] Structurer le projet en fichiers séparés pour chaque composant
+- [x] Documenter l'architecture dans le README (section Architecture)
 
-## Phase 2 : Étape 1 - Extracteur Local (SAM)
+### Extracteur Local (SAM)
 
-**Objectif :** Charger SAM et le configurer pour qu'il renvoie sa carte de caractéristiques interne (la sortie de l'encodeur).
+- [x] Charger le modèle SAM via `transformers`
+- [x] Extraire les features locales (256 canaux, 64×64)
+- [x] Valider les dimensions de sortie
 
-- [x] **Charger le ViT de SAM :**
-    - Utiliser `SamVisionModel` de `transformers` (plus simple que le dépôt SAM officiel pour la "chirurgie").
-    - `sam_model = SamVisionModel.from_pretrained("facebook/sam-vit-base")`
-- [x] **Tester l'extraction :**
-    - Préparer une image "dummy" (ex: `torch.randn(1, 3, 1024, 1024)`).
-    - Effectuer un *forward pass* : `outputs = sam_model(dummy_image)`
-    - Récupérer la sortie de l'encodeur : `feature_map = outputs.last_hidden_state`
-- [x] **Valider les dimensions :**
-    - Vérifier que `feature_map.shape` est `[Batch, 256, 64, 256]`. (Pour une image 1024x1024 avec patchs 16x16, `1024/16 = 64`).
-    - *Note :* `transformers` renvoie `(B, H, W, D)`. C'est le format "Channels-Last".
+### Compresseur (CNN)
 
----
+- [x] Implémenter la convolution stride-16 pour compression spatiale
+- [x] Gérer la conversion de format (Channels-Last → Channels-First)
+- [x] Valider la sortie compressée (768 canaux, 4×4)
 
-## Phase 3 : Étape 2 - Compresseur (CNN)
+### Extracteur Global (CLIP)
 
-**Objectif :** Réduire la résolution spatiale de la carte de SAM d'un facteur 16.
+- [x] Charger le modèle CLIP et isoler l'encodeur vision
+- [x] Contourner la couche d'embedding de CLIP
+- [x] Implémenter l'interpolation des embeddings positionnels
+- [x] Retourner la séquence complète (pas de pooling CLS)
+- [x] Valider la sortie (16 tokens, 768-dim)
 
-- [x] **Définir la couche `Conv2d` :**
-    - `in_channels = D_sam` (768)
-    - `out_channels = D_clip` (1024, pour aligner directement sur la dimension de CLIP)
-    - `kernel_size = 16`, `stride = 16`
-    - `self.compressor = nn.Conv2d(768, 1024, kernel_size=16, stride=16)`
-- [x] **Gérer le format des données (Crucial) :**
-    - `nn.Conv2d` attend un format "Channels-First" : `(B, C, H, W)`.
-    - La sortie de SAM est "Channels-Last" : `(B, H, W, D)`.
-    - **Action :** Il faut "permuter" (permute) les dimensions avant d'appliquer le `Conv2d`.
-    - `feature_map = feature_map.permute(0, 3, 1, 2)` (devient `[B, 768, 64, 64]`)
-- [x] **Valider la sortie du compresseur :**
-    - `compressed_map = self.compressor(feature_map)`
-    - La forme de sortie doit être `[B, 1024, 4, 4]`. (Car `64 / 16 = 4`).
+### Pipeline Complet
+
+- [x] Intégrer texte → image → SAM → compression → CLIP
+- [x] Tester le pipeline end-to-end
+- [x] Valider les "visual plugs" (local + global features)
 
 ---
 
-## Phase 4 : Étape 3 - Injection Globale (CLIP)
+## Décodeur (à implémenter)
 
-**Objectif :** Injecter la carte compressée dans le "corps" de CLIP, en sautant sa couche d'embedding.
+### Architecture Générale
 
-- [x] **Charger le ViT de CLIP :**
-    - `clip_model = CLIPVisionModel.from_pretrained("openai/clip-vit-large-patch14")`
-    - `D_clip = clip_model.config.hidden_size` (validera 1024)
-- [x] **Isoler les modules de CLIP :**
-    - La couche à **sauter** : `clip_model.embeddings`
-    - Le corps à **utiliser** : `clip_model.encoder`
-    - L'embedding positionnel (à gérer) : `clip_model.embeddings.position_embedding`
-- [x] **Préparer les tokens pour l'injection :**
-    - La sortie du CNN est `[B, 1024, 4, 4]`.
-    - Le `clip_model.encoder` attend une séquence de tokens : `(B, N, D)`.
-    - **Action :** Aplatir (flatten) la dimension spatiale :
-    - `tokens = compressed_map.flatten(2)` (devient `[B, 1024, 16]`)
-    - `tokens = tokens.permute(0, 2, 1)` (devient `[B, 16, 1024]`, c'est-à-dire `(B, N, D)`)
-- [x] **Gérer les Embeddings Positionnels (Point le plus complexe) :**
-    - Le ViT de CLIP a des embeddings positionnels (PE) pré-calculés pour sa grille (ex: `[1, 257, 1024]`, soit 1 token [CLS] + grille 16x16=256).
-    - Votre nouvelle grille est de `4x4 = 16` tokens.
-    - **Solution :** Vous devez **interpoler en 2D** les PE de CLIP pour qu'ils matchent votre nouvelle grille de `4x4`.
-        1.  Extraire les PE d'origine : `original_pe = clip_model.embeddings.position_embedding.weight`
-        2.  Retirer le token `[CLS]` (le 1er token) : `original_pe_grid = original_pe[:, 1:, :]`
-        3.  Reformer la grille 2D d'origine (16x16 pour CLIP-L/14) : `grid_2d = original_pe_grid.reshape(1, 16, 16, D_clip)`
-        4.  Permuter en `(B, C, H, W)` : `grid_2d = grid_2d.permute(0, 3, 1, 2)`
-        5.  **Interpoler** à la nouvelle taille (4x4) : `new_grid_2d = F.interpolate(grid_2d, size=(4, 4), mode='bicubic')`
-        6.  Aplatir en `(B, N, D)` : `new_pe = new_grid_2d.permute(0, 2, 3, 1).flatten(1, 2)` (devient `[1, 16, 1024]`)
-        7.  Ajouter ces `new_pe` à vos `tokens`.
+- [ ] Étudier l'architecture du décodeur DeepSeek-OCR (papier + code GitHub)
+- [ ] Définir la structure du décodeur (Transformer-based)
+- [ ] Choisir le modèle de base (LLaMA, GPT-2, ou autre)
 
----
+### Cross-Attention Multi-Échelle
 
-## Phase 5 : Étape 4 - Assemblage du `DeepEncoder`
+- [ ] Implémenter la cross-attention avec features locales (SAM 64×64)
+- [ ] Implémenter la cross-attention avec features globales (CLIP 16 tokens)
+- [ ] Fusionner les deux niveaux d'attention (stratégie de fusion à définir)
 
-**Objectif :** Combiner le tout dans un seul module `nn.Module`.
+### Tokenizer & Vocabulaire
 
-- [ ] **Créer la classe `DeepEncoder(nn.Module)` :**
-- [ ] **`__init__()` :**
-    - `self.sam_backbone = SamVisionModel.from_pretrained(...)`
-    - `self.compressor = nn.Conv2d(768, 1024, kernel_size=16, stride=16)`
-    - `clip_model = CLIPVisionModel.from_pretrained(...)`
-    - `self.clip_body = clip_model.encoder`
-    - `self.register_buffer('clip_pos_embed', clip_model.embeddings.position_embedding.weight)` (pour stocker les poids)
-- [ ] **Fonction d'interpolation des PE :**
-    - `def _interpolate_pos_embed(self, target_size=(4, 4))`
-    - Implémenter la logique de la Phase 4 (Gérer les PE).
-- [ ] **`forward(image)` :**
-    1.  `sam_features = self.sam_backbone(image).last_hidden_state` (Sortie: `[B, 64, 64, 768]`)
-    2.  `x = sam_features.permute(0, 3, 1, 2)` (Sortie: `[B, 768, 64, 64]`)
-    3.  `x = self.compressor(x)` (Sortie: `[B, 1024, 4, 4]`)
-    4.  `target_size = x.shape[2:]`
-    5.  `x = x.flatten(2).permute(0, 2, 1)` (Sortie: `[B, 16, 1024]`)
-    6.  `pos_embed = self._interpolate_pos_embed(target_size=target_size)`
-    7.  `x = x + pos_embed`
-    8.  `clip_output = self.clip_body(inputs_embeds=x)`
-    9.  `return clip_output.last_hidden_state, sam_features` (le papier fusionne les deux, donc il faut renvoyer les deux)
+- [ ] Choisir/adapter un tokenizer pour l'OCR (tokens texte + tokens spéciaux)
+- [ ] Gérer les tokens de début/fin de séquence
+- [ ] Implémenter le masquage causal pour la génération autorégressive
+
+### Module de Décodage
+
+- [ ] Créer la classe `DeepDecoder(nn.Module)`
+- [ ] Implémenter `forward()` avec auto-régression
+- [ ] Gérer les embeddings de position pour la séquence de sortie
+- [ ] Implémenter la tête de prédiction (Linear → logits → softmax)
+
+### Intégration Encodeur-Décodeur
+
+- [ ] Créer la classe `LightSeekOCR` combinant `DeepEncoder` + `DeepDecoder`
+- [ ] Définir l'interface d'inférence (texte → features → texte décodé)
+- [ ] Implémenter la génération avec beam search / sampling
+
+### Tests & Validation
+
+- [ ] Test unitaire du décodeur avec features dummy
+- [ ] Test d'intégration encodeur + décodeur
+- [ ] Validation des dimensions à chaque étape
+- [ ] Test de génération de texte (même sans entraînement, vérifier que ça tourne)
 
 ---
 
-## Phase 6 : Étape 5 - Validation
+## Entraînement (futur)
 
-**Objectif :** Tester l'intégration complète.
+### Données
 
-- [ ] **Test d'intégration :**
-    - Instancier `encoder = DeepEncoder()`
-    - Créer une image : `dummy_image = torch.randn(1, 3, 1024, 1024)`
-    - Exécuter : `global_features, local_features = encoder(dummy_image)`
-- [ ] **Vérifier les sorties :**
-    - S'assurer que `global_features.shape` est `[B, 16, 1024]`.
-    - S'assurer que `local_features.shape` est `[B, 64, 64, 768]`.
-    - S'assurer qu'aucun gradient n'est cassé (si l'entraînement est prévu).
+- [ ] Identifier/créer un dataset texte-image pour OCR
+- [ ] Implémenter un DataLoader compatible
+- [ ] Prétraiter les données (augmentation, normalisation)
+
+### Boucle d'Entraînement
+
+- [ ] Définir la fonction de loss (CrossEntropy pour séquences)
+- [ ] Implémenter la boucle d'entraînement avec teacher forcing
+- [ ] Configurer l'optimiseur (AdamW) et le scheduler
+- [ ] Ajouter le logging (wandb/tensorboard)
+
+### Fine-Tuning
+
+- [ ] Geler/dégeler sélectivement les composants (SAM, CLIP, décodeur)
+- [ ] Expérimenter avec différentes stratégies de fine-tuning
+- [ ] Évaluer les performances (CER, WER, accuracy)
+
+---
+
+## Documentation & Qualité
+
+### Code
+
+- [ ] Ajouter des docstrings complètes à tous les modules
+- [ ] Ajouter des type hints partout
+- [ ] Créer des tests unitaires (pytest)
+- [ ] Configurer un linter (black, flake8)
+
+### Documentation
+
+- [x] Section Architecture dans README
+- [ ] Guide d'utilisation complet
+- [ ] Exemples d'inférence (notebooks Jupyter)
+- [ ] Documenter les hyperparamètres et configurations
+
+### Ressources
+
+- [ ] Créer un dossier `examples/` avec scripts de démo
+- [ ] Ajouter des visualisations (attention maps, features)
+- [ ] Créer un notebook de tutoriel complet
+
+---
+
+## Historique
+
+- **2025-11-13** — Création de l'encodeur modulaire (DeepEncoder, SAMFeatureExtractor, CLIPVisionProcessor, Conv2DCompressor)
+- **2025-11-13** — Ajout section Architecture dans README
+- **2025-11-10** — Création initiale de TODO.md

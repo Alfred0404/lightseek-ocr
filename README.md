@@ -1,7 +1,5 @@
 <!-- Ancre vers le haut -->
 
-
-
 <br />
 <div align="center">
   <a href="https://github.com/alfred0404/lightseek-ocr">
@@ -54,6 +52,75 @@ Installer les dépendances :
 pip install -r requirements.txt
 ```
 
+## Architecture
+
+LightSeek-OCR implémente un pipeline d'encodage modulaire inspiré de l'architecture DeepSeek-OCR. Le projet est structuré en composants indépendants pour faciliter l'expérimentation et la réutilisation.
+
+### Structure du Projet
+
+```
+lightseek-ocr/
+├── src/
+│   ├── DeepEncoder.py           # Pipeline principal d'encodage
+│   ├── SAMFeatureExtractor.py   # Extraction de features SAM (locales)
+│   ├── CLIPVisionProcessor.py   # Traitement CLIP (features globales)
+│   └── Conv2DCompressor.py      # Compression par convolution
+├── images/                      # Ressources visuelles et logo
+├── ressources/                  # Documents et références
+├── requirements.txt             # Dépendances Python
+└── TODO.md                      # Suivi des tâches
+```
+
+### Pipeline d'Encodage (`DeepEncoder`)
+
+Le pipeline transforme du texte en représentations visuelles multi-échelles :
+
+1. **Rendu Texte → Image** : Conversion du texte en image via PIL
+2. **Extraction SAM** : Features spatiales fines (256 canaux, 64×64)
+3. **Compression** : Réduction dimensionnelle via convolution (768 canaux, 4×4)
+4. **Traitement CLIP** : Génération d'une séquence de tokens sémantiques (16 tokens, 768-dim)
+
+**Sorties ("Visual Plugs")** :
+
+- **Features locales** (SAM) : `(B, 256, 64, 64)` — détails spatiaux fins
+- **Features globales** (CLIP) : `(B, 16, 768)` — séquence de tokens sémantiques
+
+Ces deux tenseurs servent d'entrée au décodeur OCR (à implémenter).
+
+### Composants
+
+#### `SAMFeatureExtractor`
+
+Utilise le modèle Segment Anything (SAM) de Meta pour extraire des features visuelles riches à partir d'images de texte rendu. Produit une carte de features dense (64×64) avec 256 canaux.
+
+#### `Conv2DCompressor`
+
+Compresse les features SAM via une convolution à stride 16 pour réduire la résolution spatiale tout en augmentant la dimensionnalité (256 → 768 canaux). Crée une grille compacte de 4×4 tokens.
+
+#### `CLIPVisionProcessor`
+
+Traite les features compressées à travers l'encodeur vision de CLIP en **contournant la couche d'embedding** :
+
+- Ajoute des embeddings positionnels interpolés
+- Pas de token [CLS] ni de pooling
+- Retourne la séquence complète de tokens (pas d'agrégation)
+
+### Utilisation
+
+```python
+from src.DeepEncoder import DeepEncoder
+
+# Initialiser l'encodeur
+encoder = DeepEncoder(verbose=True)
+
+# Encoder du texte → features visuelles
+results = encoder.encode("Votre texte ici")
+
+# Accéder aux sorties
+local_features = results['local_features']    # (B, 256, 64, 64)
+global_features = results['global_features']  # (B, 16, 768)
+```
+
 ## Utilisation
 
 - Flux de travail typique :
@@ -77,19 +144,18 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 
 Même si les modèles ne seront pas recodés from scratch, il me parait important d'en comprendre le fonctionnement en profondeur.
 
-| Ressource | Description |
-| :--- | :--- |
-| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e) | Explication du modèle Segment Anything (SAM) sur Medium. |
-| [DeepSeek-OCR GitHub](https://github.com/deepseek-ai/DeepSeek-OCR/tree/main) | Dépôt GitHub officiel du projet DeepSeek-OCR. |
-| [SAM : Segment Anything – Meilleur Tutoriel](https://inside-machinelearning.com/sam-segment-anything/) | Tutoriel en français pour maîtriser SAM. |
-| [Segment Anything GitHub](https://github.com/facebookresearch/segment-anything) | Dépôt GitHub officiel du projet Segment Anything de Meta. |
-| [Sliding Window Attention](https://medium.com/@manojkumal/sliding-window-attention-565f963a1ffd) | Article Medium expliquant le mécanisme d'attention "Sliding Window". |
-| [What makes deepseek-ocr so powerful ?](https://learnopencv.com/what-makes-deepseek-ocr-so-powerful/) | Analyse par LearnOpenCV des forces de l'architecture DeepSeek-OCR. |
+| Ressource                                                                                                                   | Description                                                          |
+| :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e) | Explication du modèle Segment Anything (SAM) sur Medium.             |
+| [DeepSeek-OCR GitHub](https://github.com/deepseek-ai/DeepSeek-OCR/tree/main)                                                | Dépôt GitHub officiel du projet DeepSeek-OCR.                        |
+| [SAM : Segment Anything – Meilleur Tutoriel](https://inside-machinelearning.com/sam-segment-anything/)                      | Tutoriel en français pour maîtriser SAM.                             |
+| [Segment Anything GitHub](https://github.com/facebookresearch/segment-anything)                                             | Dépôt GitHub officiel du projet Segment Anything de Meta.            |
+| [Sliding Window Attention](https://medium.com/@manojkumal/sliding-window-attention-565f963a1ffd)                            | Article Medium expliquant le mécanisme d'attention "Sliding Window". |
+| [What makes deepseek-ocr so powerful ?](https://learnopencv.com/what-makes-deepseek-ocr-so-powerful/)                       | Analyse par LearnOpenCV des forces de l'architecture DeepSeek-OCR.   |
 
 <p align="center">
 	<img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/footers/gray0_ctp_on_line.svg?sanitize=true" />
 </p>
-
 
 <!-- LINKS & IMAGES -->
 <!-- Contributors -->
