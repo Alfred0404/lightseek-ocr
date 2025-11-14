@@ -15,6 +15,7 @@ class CLIPVisionProcessor:
         self.device = device if device is not None else infer_device()
         print(f"Loading CLIP model on device: {self.device}")
 
+        # https://huggingface.co/openai/clip-vit-base-patch32
         self.model = CLIPModel.from_pretrained(model_name).to(self.device)
         self.model.eval()
 

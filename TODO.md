@@ -18,6 +18,7 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 - [x] Charger le modèle SAM via `transformers`
 - [x] Extraire les features locales (256 canaux, 64×64)
 - [x] Valider les dimensions de sortie
+- [ ] Pour le benchmark de SAM, on peut afficher les segments juste pour vérifier que l'embedding est cohérent
 
 ### Compresseur (CNN)
 

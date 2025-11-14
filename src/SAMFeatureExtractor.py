@@ -16,6 +16,7 @@ class SAMFeatureExtractor:
         self.device = device if device is not None else infer_device()
         print(f"Loading SAM model on device: {self.device}")
 
+        # https://huggingface.co/facebook/sam-vit-base
         self.model = SamVisionModel.from_pretrained(
             model_name, trust_remote_code=True
         ).to(self.device)
