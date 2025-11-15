@@ -100,12 +100,13 @@ class SAMFeatureExtractor:
 
         return grid_image
 
+
 if __name__ == "__main__":
     # Test the SAMFeatureExtractor
     extractor = SAMFeatureExtractor()
 
     # Load a sample image
-    sample_image = Image.open("output_image.png").convert("RGB")
+    sample_image = Image.open("patches_32px/patch_81.png").convert("RGB")
 
     # Extract feature map
     features = extractor.extract(sample_image)
@@ -114,3 +115,5 @@ if __name__ == "__main__":
     # Visualize feature map
     feature_map_image = extractor.show_feature_map(sample_image)
     feature_map_image.show()
+    # save to file
+    feature_map_image.save("sam_feature_map.png")

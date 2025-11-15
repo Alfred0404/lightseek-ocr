@@ -1,3 +1,6 @@
 torch
 transformers
 huggingface_hub[hf_xet]
+patchify
+Pillow
+numpy

@@ -5,7 +5,7 @@ Complete end-to-end OCR system: Image → Text
 
 import sys
 from DeepEncoder import DeepEncoder
-from Decoder import Decoder
+# from Decoder import Decoder
 
 
 def main():

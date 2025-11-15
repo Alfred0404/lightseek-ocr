@@ -31,4 +31,6 @@ if __name__ == "__main__":
     image_tensor = transform(image_with_text)
     print("Image tensor shape:", image_tensor.shape)
     # save the image
-    image_with_text.save("output_image.png")
+
+    image_path = "image.png"
+    image_with_text.save(image_path)
