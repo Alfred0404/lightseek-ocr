@@ -10,13 +10,15 @@ from transformers import SamVisionModel, infer_device
 import math
 import numpy as np
 
+from colors import bcolors
+
 
 class SAMFeatureExtractor:
     """Extract visual features using SAM vision encoder"""
 
     def __init__(self, model_name="facebook/sam-vit-base", device=None):
         self.device = device if device is not None else infer_device()
-        print(f"Loading SAM model on device: {self.device}")
+        print(f"{bcolors.OKCYAN}Loading SAM model on device: {self.device}{bcolors.ENDC}")
 
         # https://huggingface.co/facebook/sam-vit-base
         self.model = SamVisionModel.from_pretrained(
@@ -106,11 +108,11 @@ if __name__ == "__main__":
     extractor = SAMFeatureExtractor()
 
     # Load a sample image
-    sample_image = Image.open("patches_32px/patch_81.png").convert("RGB")
+    sample_image = Image.open("image.png").convert("RGB")
 
     # Extract feature map
     features = extractor.extract(sample_image)
-    print("Extracted feature map shape:", features.shape)
+    print(f"{bcolors.OKGREEN}Extracted feature map shape: {features.shape}{bcolors.ENDC}")
 
     # Visualize feature map
     feature_map_image = extractor.show_feature_map(sample_image)
