@@ -17,14 +17,13 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 
 - [x] Charger le modèle SAM via `transformers`
 - [x] Extraire les features locales (256 canaux, 64×64)
-- [x] Valider les dimensions de sortie
-- [ ] Pour le benchmark de SAM, on peut afficher les segments juste pour vérifier que l'embedding est cohérent
+- [x] Valider les dimensions de sortie: `torch.Size([1, 256, 64, 64])`
 
 ### Compresseur (CNN)
 
 - [x] Implémenter la convolution stride-16 pour compression spatiale
 - [x] Gérer la conversion de format (Channels-Last → Channels-First)
-- [x] Valider la sortie compressée (768 canaux, 4×4)
+- [x] Valider la sortie compressée (768 canaux, 16×16): `torch.Size([1, 768, 16, 16])`
 
 ### Extracteur Global (CLIP)
 
@@ -32,7 +31,7 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 - [x] Contourner la couche d'embedding de CLIP
 - [x] Implémenter l'interpolation des embeddings positionnels
 - [x] Retourner la séquence complète (pas de pooling CLS)
-- [x] Valider la sortie (16 tokens, 768-dim)
+- [x] Valider la sortie (256 tokens, 768-dim): `torch.Size([1, 256, 768])`
 
 ### Pipeline Complet
 

@@ -95,7 +95,7 @@ Utilise le modèle Segment Anything (SAM) de Meta pour extraire des features vis
 
 #### `Conv2DCompressor`
 
-Compresse les features SAM via une convolution à stride 16 pour réduire la résolution spatiale tout en augmentant la dimensionnalité (256 → 768 canaux). Crée une grille compacte de 4×4 tokens.
+Compresse les features SAM via une convolution à stride 16 pour réduire la résolution spatiale tout en augmentant la dimensionnalité (256 → 768 canaux). Crée une grille compacte de 16×16 = 256 tokens.
 
 #### `CLIPVisionProcessor`
 
@@ -117,8 +117,8 @@ encoder = DeepEncoder(verbose=True)
 results = encoder.encode("Votre texte ici")
 
 # Accéder aux sorties
-local_features = results['local_features']    # (B, 256, 64, 64)
-global_features = results['global_features']  # (B, 16, 768)
+local_features = results['local_features']    # (B, 256, 64, 64) -> 25- channels et 64*64 = 4096 tokens
+global_features = results['global_features']  # (B, 256, 768) -> 768 channels et 16*16 = 256 tokens
 ```
 
 ## Utilisation
@@ -142,16 +142,17 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 
 ## Ressources
 
-Même si les modèles ne seront pas recodés from scratch, il me parait important d'en comprendre le fonctionnement en profondeur.
+Même si les modèles ne seront pas recodés from scratch, il est primordial d'en comprendre le fonctionnement en profondeur pour mener à bien l'implémentation de l'architecture.
 
 | Ressource                                                                                                                   | Description                                                          |
 | :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
-| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e) | Explication du modèle Segment Anything (SAM) sur Medium.             |
+| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e) | Article Medium sur l'explication du modèle Segment Anything (SAM).             |
 | [DeepSeek-OCR GitHub](https://github.com/deepseek-ai/DeepSeek-OCR/tree/main)                                                | Dépôt GitHub officiel du projet DeepSeek-OCR.                        |
 | [SAM : Segment Anything – Meilleur Tutoriel](https://inside-machinelearning.com/sam-segment-anything/)                      | Tutoriel en français pour maîtriser SAM.                             |
 | [Segment Anything GitHub](https://github.com/facebookresearch/segment-anything)                                             | Dépôt GitHub officiel du projet Segment Anything de Meta.            |
 | [Sliding Window Attention](https://medium.com/@manojkumal/sliding-window-attention-565f963a1ffd)                            | Article Medium expliquant le mécanisme d'attention "Sliding Window". |
 | [What makes deepseek-ocr so powerful ?](https://learnopencv.com/what-makes-deepseek-ocr-so-powerful/)                       | Analyse par LearnOpenCV des forces de l'architecture DeepSeek-OCR.   |
+| [Documentation de SAM *(transformers)*](https://huggingface.co/docs/transformers/v4.57.1/en/model_doc/sam#transformers.SamImageProcessor)                                                   | Documentation du modèle SAM dans la librairie transformers  |
 
 <p align="center">
 	<img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/footers/gray0_ctp_on_line.svg?sanitize=true" />
