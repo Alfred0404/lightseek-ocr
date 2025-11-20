@@ -13,7 +13,7 @@ from transformers import infer_device
 import torch.nn as nn
 
 
-from colors import bcolors
+from utils.colors import bcolors
 
 from SAMFeatureExtractor import SAMFeatureExtractor
 from CLIPVisionProcessor import CLIPVisionProcessor

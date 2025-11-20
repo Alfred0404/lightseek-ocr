@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from transformers import CLIPModel, infer_device
 
-from colors import bcolors
+from utils.colors import bcolors
 
 
 class CLIPVisionProcessor:
@@ -15,7 +15,9 @@ class CLIPVisionProcessor:
 
     def __init__(self, model_name="openai/clip-vit-base-patch32", device=None):
         self.device = device if device is not None else infer_device()
-        print(f"{bcolors.OKCYAN}Loading CLIP model on device: {self.device}{bcolors.ENDC}")
+        print(
+            f"{bcolors.OKCYAN}Loading CLIP model on device: {self.device}{bcolors.ENDC}"
+        )
 
         # https://huggingface.co/openai/clip-vit-base-patch32
         self.model = CLIPModel.from_pretrained(model_name).to(self.device)
@@ -23,7 +25,9 @@ class CLIPVisionProcessor:
 
         self.vision_model = self.model.vision_model
         self.vision_hidden_size = self.model.config.vision_config.hidden_size
-        print(f"{bcolors.OKCYAN}CLIP vision hidden size: {self.vision_hidden_size}{bcolors.ENDC}")
+        print(
+            f"{bcolors.OKCYAN}CLIP vision hidden size: {self.vision_hidden_size}{bcolors.ENDC}"
+        )
 
     def _interpolate_pos_embedding(
         self, pos_embed: torch.Tensor, num_tokens: int

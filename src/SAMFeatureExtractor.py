@@ -10,7 +10,7 @@ from transformers import SamVisionModel, infer_device
 import math
 import numpy as np
 
-from colors import bcolors
+from utils.colors import bcolors
 
 
 class SAMFeatureExtractor:
