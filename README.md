@@ -77,13 +77,13 @@ Le pipeline transforme du texte en représentations visuelles multi-échelles :
 
 1. **Rendu Texte → Image** : Conversion du texte en image via PIL
 2. **Extraction SAM** : Features spatiales fines (256 canaux, 64×64)
-3. **Compression** : Réduction dimensionnelle via convolution (768 canaux, 4×4)
-4. **Traitement CLIP** : Génération d'une séquence de tokens sémantiques (16 tokens, 768-dim)
+3. **Compression** : Réduction dimensionnelle via convolution (1024 canaux, 16×16)
+4. **Traitement CLIP** : Génération d'une séquence de tokens sémantiques (256 tokens, 768-dim)
 
 **Sorties ("Visual Plugs")** :
 
 - **Features locales** (SAM) : `(B, 256, 64, 64)` — détails spatiaux fins
-- **Features globales** (CLIP) : `(B, 16, 768)` — séquence de tokens sémantiques
+- **Features globales** (CLIP) : `(B, 256, 768)` — séquence de tokens sémantiques
 
 Ces deux tenseurs servent d'entrée au décodeur OCR (à implémenter).
 
