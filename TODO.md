@@ -45,15 +45,15 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 
 ### Architecture Générale
 
-- [ ] Étudier l'architecture du décodeur DeepSeek-OCR (papier + code GitHub)
-- [ ] Définir la structure du décodeur (Transformer-based)
-- [ ] Choisir le modèle de base (LLaMA, GPT-2, ou autre)
+- [x] Étudier l'architecture du décodeur DeepSeek-OCR (papier + code GitHub)
+- [x] Définir la structure du décodeur: **Transformer Decoder-only** (4-6 layers, 8 heads)
+- [x] Choisir le modèle de base: **Scratch** (recommandé) ou **Qwen-0.5B** (avec LoRA)
 
 ### Cross-Attention Multi-Échelle
 
-- [ ] Implémenter la cross-attention avec features locales (SAM 64×64)
-- [ ] Implémenter la cross-attention avec features globales (CLIP 16 tokens)
-- [ ] Fusionner les deux niveaux d'attention (stratégie de fusion à définir)
+- [x] Implémenter la cross-attention avec features locales (SAM 64×64 = 256 tokens)
+- [x] Implémenter la cross-attention avec features globales (CLIP = 256 tokens)
+- [x] Fusionner les deux niveaux d'attention: **Concaténation** (Total 512 visual tokens)
 
 ### Tokenizer & Vocabulaire
 
@@ -63,23 +63,23 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 
 ### Module de Décodage
 
-- [ ] Créer la classe `DeepDecoder(nn.Module)`
-- [ ] Implémenter `forward()` avec auto-régression
-- [ ] Gérer les embeddings de position pour la séquence de sortie
-- [ ] Implémenter la tête de prédiction (Linear → logits → softmax)
+- [x] Créer la classe `DeepDecoder(nn.Module)`
+- [x] Implémenter `forward()` avec auto-régression
+- [x] Gérer les embeddings de position pour la séquence de sortie
+- [x] Implémenter la tête de prédiction (Linear → logits → softmax)
 
 ### Intégration Encodeur-Décodeur
 
-- [ ] Créer la classe `LightSeekOCR` combinant `DeepEncoder` + `DeepDecoder`
-- [ ] Définir l'interface d'inférence (texte → features → texte décodé)
-- [ ] Implémenter la génération avec beam search / sampling
+- [x] Créer la classe `LightSeekOCR` combinant `DeepEncoder` + `DeepDecoder`
+- [x] Définir l'interface d'inférence (texte → features → texte décodé)
+- [x] Implémenter la génération avec beam search / sampling
 
 ### Tests & Validation
 
-- [ ] Test unitaire du décodeur avec features dummy
-- [ ] Test d'intégration encodeur + décodeur
-- [ ] Validation des dimensions à chaque étape
-- [ ] Test de génération de texte (même sans entraînement, vérifier que ça tourne)
+- [x] Test unitaire du décodeur avec features dummy
+- [x] Test d'intégration encodeur + décodeur
+- [x] Validation des dimensions à chaque étape
+- [x] Test de génération de texte (même sans entraînement, vérifier que ça tourne)
 
 ---
 
@@ -89,24 +89,11 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 
 - [ ] Identifier/créer un dataset texte-image pour OCR
 - [ ] Implémenter un DataLoader compatible
-- [ ] Prétraiter les données (augmentation, normalisation)
+- [ ] **Optimisation**: Pré-calculer les features SAM/CLIP sur disque pour éviter de les charger en RAM pendant l'entraînement
 
 ### Boucle d'Entraînement
 
 - [ ] Définir la fonction de loss (CrossEntropy pour séquences)
-- [ ] Implémenter la boucle d'entraînement avec teacher forcing
-- [ ] Configurer l'optimiseur (AdamW) et le scheduler
-- [ ] Ajouter le logging (wandb/tensorboard)
-
-### Fine-Tuning
-
-- [ ] Geler/dégeler sélectivement les composants (SAM, CLIP, décodeur)
-- [ ] Expérimenter avec différentes stratégies de fine-tuning
-- [ ] Évaluer les performances (CER, WER, accuracy)
-
----
-
-## Documentation & Qualité
 
 ### Code
 

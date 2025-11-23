@@ -148,6 +148,25 @@ class DeepEncoder:
         if self.verbose:
             print(f"  Image size: {pil_image.size}\n")
 
+        features = self.extract_features(pil_image)
+
+        return {
+            "image": pil_image,
+            "local_features": features["local_features"],
+            "global_features": features["global_features"],
+            "compressed_features": features["compressed_features"],
+        }
+
+    def extract_features(self, pil_image: Image.Image) -> dict:
+        """
+        Extract visual features from an image (without text rendering step).
+
+        Args:
+            pil_image: Input PIL Image
+
+        Returns:
+            dict with keys: local_features, global_features, compressed_features
+        """
         # Step 2: SAM Feature Extraction (Local Features)
         if self.verbose:
             print(
@@ -180,24 +199,10 @@ class DeepEncoder:
         if self.verbose:
             print(f"  Global features shape: {global_features.shape}\n")
 
-        if self.verbose:
-            print("=" * 70)
-            print(f"{bcolors.OKGREEN}Encoding completed successfully!{bcolors.ENDC}")
-            print("=" * 70)
-            print("\nVisual Features for Decoder:")
-            print(
-                f"  - Local features (SAM):   {local_features.shape}  # Fine-grained spatial"
-            )
-            print(
-                f"  - Global features (CLIP): {global_features.shape}  # Semantic tokens"
-            )
-            print()
-
         return {
-            "image": pil_image,
             "local_features": local_features,
-            "global_features": global_features,
             "compressed_features": compressed_map,
+            "global_features": global_features,
         }
 
     def visualize_spatial_aggregation(
