@@ -46,7 +46,12 @@ class DeepDecoder(nn.Module):
         # Visual Projection Layer
         # Projects visual features to the exact embedding space of the LLM
         # Even if dims match (768->768), this layer helps align the feature distributions
-        self.visual_projection = nn.Linear(768, self.hidden_size).to(self.device)
+        # Upgraded to MLP for better capacity
+        self.visual_projection = nn.Sequential(
+            nn.Linear(768, self.hidden_size * 4),
+            nn.GELU(),
+            nn.Linear(self.hidden_size * 4, self.hidden_size),
+        ).to(self.device)
 
         if self.verbose:
             print(

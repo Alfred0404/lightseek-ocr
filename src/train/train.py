@@ -9,6 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import sys
+import matplotlib.pyplot as plt
 
 # Add src to path
 # Current file is in src/train, so we need to add src (parent dir)
@@ -27,11 +28,13 @@ def collate_fn(batch):
 
 def train():
     # --- Configuration ---
-    BATCH_SIZE = 1  # Physical batch size (keep small for 8GB VRAM)
-    ACCUMULATION_STEPS = 4  # Effective batch size = 4 (More updates)
+    BATCH_SIZE = 8  # Physical batch size (keep small for 8GB VRAM)
+    ACCUMULATION_STEPS = 8  # Effective batch size = 4 (More updates)
     LEARNING_RATE = 1e-4
-    EPOCHS = 5
-    SAVE_DIR = "checkpoints"
+    EPOCHS = 30  # Increased from 5
+
+    CHECKPOINT_DIR = "src/train/checkpoints"
+    METRICS_DIR = "src/train/training_metrics"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"{bcolors.HEADER}Starting Training on {device}{bcolors.ENDC}")
@@ -56,7 +59,14 @@ def train():
     # Freeze GPT-2 (Decoder)
     for param in model.decoder.model.parameters():
         param.requires_grad = False
-    print("  - GPT-2 Decoder: Frozen ❄️")
+
+    # UNFREEZE the last block of GPT-2 for better adaptation
+    for param in model.decoder.model.transformer.h[-1].parameters():
+        param.requires_grad = True
+    # UNFREEZE the final layer norm
+    for param in model.decoder.model.transformer.ln_f.parameters():
+        param.requires_grad = True
+    print("  - GPT-2 Decoder: Frozen (except last block & ln_f) ❄️/🔥")
 
     # Trainable: Compressor, Projection, Visual Projection
     # Ensure Compressor and Projection are trainable
@@ -79,10 +89,11 @@ def train():
         f"  - Trainable Parameters: {trainable_params:,} / {all_params:,} ({trainable_params/all_params:.1%})"
     )
 
-    # --- Optimizer ---
+    # --- Optimizer & Scheduler ---
     optimizer = optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()), lr=LEARNING_RATE
     )
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
     # --- Dataset ---
     print(f"\n{bcolors.OKBLUE}Initializing Dataset...{bcolors.ENDC}")
@@ -92,10 +103,14 @@ def train():
     )
 
     # --- Training Loop ---
-    if not os.path.exists(SAVE_DIR):
-        os.makedirs(SAVE_DIR)
+    if not os.path.exists(CHECKPOINT_DIR):
+        os.makedirs(CHECKPOINT_DIR)
+    if not os.path.exists(METRICS_DIR):
+        os.makedirs(METRICS_DIR)
 
     print(f"\n{bcolors.HEADER}Training Start!{bcolors.ENDC}")
+
+    epoch_losses = []
 
     for epoch in range(EPOCHS):
         model.train()
@@ -152,13 +167,37 @@ def train():
                 optimizer.zero_grad()
 
             epoch_loss += loss.item() * ACCUMULATION_STEPS
-            progress_bar.set_postfix({"loss": loss.item() * ACCUMULATION_STEPS})
+            progress_bar.set_postfix(
+                {
+                    "loss": loss.item() * ACCUMULATION_STEPS,
+                    "lr": optimizer.param_groups[0]["lr"],
+                }
+            )
+
+        # Step Scheduler
+        scheduler.step()
+        avg_loss = epoch_loss / len(dataloader)
+        epoch_losses.append(avg_loss)
+        print(f"Epoch {epoch+1} Loss: {avg_loss:.4f}")
 
         # Save Checkpoint
         torch.save(
-            model.state_dict(), os.path.join(SAVE_DIR, f"model_epoch_{epoch+1}.pth")
+            model.state_dict(),
+            os.path.join(CHECKPOINT_DIR, f"model_epoch_{epoch+1}.pth"),
         )
         print(f"Saved checkpoint for epoch {epoch+1}")
+
+    # --- Plot Loss Curve ---
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(1, EPOCHS + 1), epoch_losses, marker="o", label="Training Loss")
+    plt.title("Training Loss Curve")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid(True)
+    loss_plot_path = os.path.join(METRICS_DIR, "loss_curve.png")
+    plt.savefig(loss_plot_path)
+    print(f"\n{bcolors.OKGREEN}Loss curve saved to {loss_plot_path}{bcolors.ENDC}")
 
 
 if __name__ == "__main__":

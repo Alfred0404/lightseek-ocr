@@ -128,6 +128,14 @@ global_features = results['global_features']  # (B, 256, 768) -> 768 channels et
   2. Rendre des sections de texte en images.
   3. Exécuter l'OCR/encodeur et évaluer la performance.
 
+## Entraînement
+
+Le problème que je rencontre ici est que la loss stagne vers ~4.5, ce qui est evidemment très mauvais.
+le training_overfitting fonctionne lui plutot bien, la loss converge effectivement vers 0.
+D'après mes recherches, il y a plusieurs raisons possibles :
+
+- le texte est trop petit, donc l'encodeur perd tout le sens de la séquence avant d'arriver au decoder, qui ne comprend donc rien du tout.
+
 ## Contribuer
 
 Les contributions sont bienvenues : signalez des bugs via des issues et proposez des pull requests pour les améliorations.
