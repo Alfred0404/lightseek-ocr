@@ -22,22 +22,17 @@ class Conv2DCompressor(nn.Module):
         intermediate_channels = 512  # Forçons une valeur standard
 
         self.compressor = nn.Sequential(
-            # --- Couche 1 ---
-            # Paper: kernel=3, stride=2, padding=1
-            # Input: (B, 256, 64, 64)
-            # Output: (B, 512, 32, 32) (Downsample 4x)
+            # In: (B, 256, 64, 64)
+            # Out: (B, 512, 32, 32) (Downsample 4x)
             nn.Conv2d(
                 in_channels, intermediate_channels, kernel_size=3, stride=2, padding=1
             ),
-            nn.GELU(),  # Activation (GELU est courant avec les Transformers)
-            # --- Couche 2 ---
-            # Paper: kernel=3, stride=2, padding=1
-            # Input: (B, 512, 32, 32)
-            # Output: (B, 1024, 16, 16) (Downsample 16x total)
+            nn.GELU(),
+            # In: (B, 512, 32, 32)
+            # Out: (B, 1024, 16, 16) (Downsample 16x total)
             nn.Conv2d(
                 intermediate_channels, out_channels, kernel_size=3, stride=2, padding=1
             ),
-            # Pas d'activation finale, la sortie est l'embedding
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -3,6 +3,8 @@ import torchvision.transforms as T
 
 image_size = (1024, 1024)
 image = Image.new("RGB", image_size, color=(255, 255, 255))
+
+# example text
 text = """Voici un diagnostic de l'erreur et les étapes pour la résoudre.
 
 Diagnostic de l'erreur ValueError: Unrecognized model

@@ -103,9 +103,8 @@ class CLIPVisionProcessor:
         tokens_with_pos = self.vision_model.pre_layrnorm(tokens_with_pos)
 
         # Pass through encoder
-        with torch.no_grad():
-            encoder_outputs = self.vision_model.encoder(inputs_embeds=tokens_with_pos)
-            final_hidden_states = encoder_outputs[0]
+        encoder_outputs = self.vision_model.encoder(inputs_embeds=tokens_with_pos)
+        final_hidden_states = encoder_outputs[0]
 
         # Return the full sequence (global features for OCR decoder)
         return final_hidden_states

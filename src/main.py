@@ -50,7 +50,7 @@ def main():
             print("Processing...")
             print("=" * 70)
 
-            # Step 1: Encode (text → visual features)
+            # Encode (text → visual features)
             print("\n[Encoding] Text → Image → Visual Features...")
             results = encoder.encode(user_input)
 
@@ -60,10 +60,10 @@ def main():
             print(f"✓ Local features:  {local_features.shape}")
             print(f"✓ Global features: {global_features.shape}")
 
-            # Step 2: Decode (visual features → text)
+            # Decode (visual features → text)
             print("\n[Decoding] Visual Features → Text...")
 
-            # Option 1: Simple generation with prompt
+            # Simple generation with prompt
             prompt = f"The image contains the text: '{user_input}'. Transcribe it:"
 
             # Generate text
@@ -82,7 +82,7 @@ def main():
             print(f"Output text: {output_text}")
             print("\n" + "=" * 70)
 
-            # Optionally save the rendered image
+            # save the rendered image
             save_option = input("\nSave rendered image? (y/n): ").strip().lower()
             if save_option == "y":
                 filename = f"output_{user_input[:20].replace(' ', '_')}.png"
