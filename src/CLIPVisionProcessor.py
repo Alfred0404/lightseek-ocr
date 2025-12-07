@@ -103,7 +103,6 @@ class CLIPVisionProcessor:
         tokens_with_pos = self.vision_model.pre_layrnorm(tokens_with_pos)
 
         # Pass through encoder
-        # REMOVED torch.no_grad() to allow gradients to flow back to compressor!
         encoder_outputs = self.vision_model.encoder(inputs_embeds=tokens_with_pos)
         final_hidden_states = encoder_outputs[0]
 

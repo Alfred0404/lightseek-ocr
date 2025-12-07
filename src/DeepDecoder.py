@@ -78,22 +78,22 @@ class DeepDecoder(nn.Module):
             text_attention_mask: Attention mask for text (B, Seq_Len)
         """
 
-        # 1. Project Visual Features
+        # Project Visual Features
         # Concatenate local and global features: (B, 512, 768)
         visual_features = torch.cat([local_features, global_features], dim=1)
         visual_embeds = self.visual_projection(visual_features)  # (B, 512, Hidden)
 
-        # 2. Prepare Text Embeddings
+        # Prepare Text Embeddings
         if text_input_ids is not None:
             # Get text embeddings from GPT-2's embedding layer
             wte = self.model.transformer.wte
             text_embeds = wte(text_input_ids)  # (B, Seq_Len, Hidden)
 
-            # 3. Concatenate: [Visual, Text]
+            # Concatenate: [Visual, Text]
             # New sequence length = 512 + Seq_Len
             inputs_embeds = torch.cat([visual_embeds, text_embeds], dim=1)
 
-            # 4. Create Attention Mask
+            # Create Attention Mask
             # Visual tokens are always attended to (1)
             batch_size = visual_features.shape[0]
             visual_mask = torch.ones(
@@ -107,7 +107,7 @@ class DeepDecoder(nn.Module):
             else:
                 attention_mask = None
 
-            # 5. Forward through GPT-2
+            # Forward through GPT-2
             # We use inputs_embeds instead of input_ids
             outputs = self.model(
                 inputs_embeds=inputs_embeds,
@@ -129,13 +129,13 @@ class DeepDecoder(nn.Module):
         """
         self.model.eval()
 
-        # 1. Prepare Visual Context
+        # Prepare Visual Context
         visual_features = torch.cat([local_features, global_features], dim=1)
         visual_embeds = self.visual_projection(visual_features)  # (B, 512, Hidden)
 
         batch_size = visual_features.shape[0]
 
-        # 2. Start with [BOS] (or just start generation if model allows)
+        # Start with [BOS] (or just start generation if model allows)
         # GPT-2 doesn't have a standard BOS, but we can start with a prompt or empty
         # Here we assume we start generating from scratch.
         # We need to feed visual_embeds as 'past_key_values' or prefix.

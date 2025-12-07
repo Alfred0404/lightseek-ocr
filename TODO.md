@@ -87,8 +87,8 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 
 ### Données
 
-- [ ] Identifier/créer un dataset texte-image pour OCR
-- [ ] Implémenter un DataLoader compatible
+- [x] Identifier/créer un dataset texte-image pour OCR
+- [x] Implémenter un DataLoader compatible
 - [ ] **Optimisation**: Pré-calculer les features SAM/CLIP sur disque pour éviter de les charger en RAM pendant l'entraînement
 
 ### Boucle d'Entraînement
@@ -97,8 +97,8 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 
 ### Code
 
-- [ ] Ajouter des docstrings complètes à tous les modules
-- [ ] Ajouter des type hints partout
+- [x] Ajouter des docstrings complètes à tous les modules
+- [x] Ajouter des type hints partout
 - [ ] Créer des tests unitaires (pytest)
 - [ ] Configurer un linter (black, flake8)
 
@@ -114,11 +114,3 @@ Suivi du développement de l'implémentation de DeepSeek-OCR (encodeur + décode
 - [ ] Créer un dossier `examples/` avec scripts de démo
 - [ ] Ajouter des visualisations (attention maps, features)
 - [ ] Créer un notebook de tutoriel complet
-
----
-
-## Historique
-
-- **2025-11-13** — Création de l'encodeur modulaire (DeepEncoder, SAMFeatureExtractor, CLIPVisionProcessor, Conv2DCompressor)
-- **2025-11-13** — Ajout section Architecture dans README
-- **2025-11-10** — Création initiale de TODO.md

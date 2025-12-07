@@ -1,6 +1,6 @@
 """
 LightSeekOCR
-The complete Optical Character Recognition pipeline.
+The complete ocr pipeline.
 Combines DeepEncoder (Text->Visual) and DeepDecoder (Visual->Text).
 """
 
@@ -67,13 +67,13 @@ class LightSeekOCR(nn.Module):
                 - generated_text: Output from decoder
                 - visual_features: Intermediate features
         """
-        # 1. Extract Features
+        # Extract Features
         features = self.encoder.extract_features(image)
         compressed = features["compressed_features"]
         global_f = features["global_features"]
         local_f = compressed.flatten(2).permute(0, 2, 1)
 
-        # 2. Decode
+        # Decode
         if self.verbose:
             print(f"{bcolors.OKBLUE}Decoding visual features...{bcolors.ENDC}")
 
@@ -105,10 +105,10 @@ class LightSeekOCR(nn.Module):
         if self.verbose:
             print(f"{bcolors.OKBLUE}Running Pipeline on: '{text}'{bcolors.ENDC}")
 
-        # 1. Render Text to Image
+        # Render Text to Image
         image = self.encoder.text_to_image(text)
 
-        # 2. Predict from Image
+        # Predict from Image
         result = self.predict_from_image(image, max_new_tokens)
         result["original_text"] = text
         result["image"] = image

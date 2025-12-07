@@ -18,8 +18,6 @@ def main():
     print(f"{bcolors.HEADER}Starting Complete Pipeline Test{bcolors.ENDC}")
 
     # Initialize the full model
-    # Note: This will load SAM (Base), CLIP (Base), and GPT-2 (Small)
-    # Ensure you have ~4-6GB VRAM available or run on CPU
     ocr = LightSeekOCR(verbose=True)
 
     # Test Sentence

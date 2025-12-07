@@ -61,10 +61,16 @@ LightSeek-OCR implémente un pipeline d'encodage modulaire inspiré de l'archite
 ```
 lightseek-ocr/
 ├── src/
+│   ├── train/                   # Scripts d'entraînement
+│   │   ├── train.py             # Entraînement principal
+│   │   └── train_overfit.py     # Test d'overfitting
 │   ├── DeepEncoder.py           # Pipeline principal d'encodage
+│   ├── DeepDecoder.py           # Décodeur (GPT-2)
+│   ├── LightSeekOCR.py          # Pipeline complet (Encoder + Decoder)
 │   ├── SAMFeatureExtractor.py   # Extraction de features SAM (locales)
 │   ├── CLIPVisionProcessor.py   # Traitement CLIP (features globales)
-│   └── Conv2DCompressor.py      # Compression par convolution
+│   ├── Conv2DCompressor.py      # Compression par convolution
+│   └── dataset.py               # Dataset synthétique
 ├── images/                      # Ressources visuelles et logo
 ├── ressources/                  # Documents et références
 ├── requirements.txt             # Dépendances Python
@@ -85,40 +91,40 @@ Le pipeline transforme du texte en représentations visuelles multi-échelles :
 - **Features locales** (SAM) : `(B, 256, 64, 64)` — détails spatiaux fins
 - **Features globales** (CLIP) : `(B, 256, 768)` — séquence de tokens sémantiques
 
-Ces deux tenseurs servent d'entrée au décodeur OCR (à implémenter).
+### Pipeline de Décodage (`DeepDecoder`)
 
-### Composants
+Le décodeur utilise un modèle **GPT-2** pré-entraîné pour générer le texte à partir des features visuelles.
 
-#### `SAMFeatureExtractor`
+- **Projection Visuelle** : Un MLP projette les features visuelles concaténées (Local + Global) dans l'espace d'embedding de GPT-2.
+- **Génération** : Le modèle génère le texte de manière auto-régressive, conditionné par les features visuelles (qui agissent comme un "prompt" visuel).
 
-Utilise le modèle Segment Anything (SAM) de Meta pour extraire des features visuelles riches à partir d'images de texte rendu. Produit une carte de features dense (64×64) avec 256 canaux.
+### Composants Clés
+
+#### `SAMFeatureExtractor` & `CLIPVisionProcessor`
+
+Utilisent respectivement SAM (Segment Anything) et CLIP pour extraire des features locales et globales. Ces modèles sont **gelés (frozen)** pendant l'entraînement pour préserver leurs connaissances pré-apprises.
 
 #### `Conv2DCompressor`
 
-Compresse les features SAM via une convolution à stride 16 pour réduire la résolution spatiale tout en augmentant la dimensionnalité (256 → 768 canaux). Crée une grille compacte de 16×16 = 256 tokens.
+Compresse les features SAM pour réduire la dimensionnalité spatiale. Ce module est **entraînable**.
 
-#### `CLIPVisionProcessor`
+#### `DeepDecoder` (GPT-2)
 
-Traite les features compressées à travers l'encodeur vision de CLIP en **contournant la couche d'embedding** :
-
-- Ajoute des embeddings positionnels interpolés
-- Pas de token [CLS] ni de pooling
-- Retourne la séquence complète de tokens (pas d'agrégation)
+Le modèle de langage est partiellement gelé. Seuls le dernier bloc du transformeur et la couche de normalisation finale (`ln_f`) sont entraînés, ainsi que la couche de projection visuelle.
 
 ### Utilisation
 
 ```python
-from src.DeepEncoder import DeepEncoder
+from src.LightSeekOCR import LightSeekOCR
 
-# Initialiser l'encodeur
-encoder = DeepEncoder(verbose=True)
+# Initialiser le pipeline complet
+ocr = LightSeekOCR(verbose=True)
 
-# Encoder du texte → features visuelles
-results = encoder.encode("Votre texte ici")
+# Inférence (Texte -> Image -> Features -> Texte prédit)
+result = ocr.predict("Hello LightSeek")
 
-# Accéder aux sorties
-local_features = results['local_features']    # (B, 256, 64, 64) -> 25- channels et 64*64 = 4096 tokens
-global_features = results['global_features']  # (B, 256, 768) -> 768 channels et 16*16 = 256 tokens
+print(f"Original: {result['original_text']}")
+print(f"Generated: {result['generated_text']}")
 ```
 
 ## Utilisation
@@ -130,11 +136,23 @@ global_features = results['global_features']  # (B, 256, 768) -> 768 channels et
 
 ## Entraînement
 
-Le problème que je rencontre ici est que la loss stagne vers ~4.5, ce qui est evidemment très mauvais.
-le training_overfitting fonctionne lui plutot bien, la loss converge effectivement vers 0.
-D'après mes recherches, il y a plusieurs raisons possibles :
+L'entraînement est géré par les scripts dans `src/train/`. Le dataset `SyntheticOCRDataset` génère des images de texte synthétique à la volée pour l'entraînement.
 
-- le texte est trop petit, donc l'encodeur perd tout le sens de la séquence avant d'arriver au decoder, qui ne comprend donc rien du tout.
+### Résultats Actuels
+
+#### ✅ Overfitting (`train_overfit.py`)
+
+Le mode "overfit" (entraînement sur un seul exemple) fonctionne **raisonnablement bien**. Le modèle parvient à mémoriser l'exemple et la loss converge vers 0, ce qui valide techniquement la capacité du modèle à apprendre et la propagation des gradients.
+
+#### ⚠️ Généralisation (`train.py`)
+
+L'entraînement général (sur des données variées) **ne fonctionne pas de manière satisfaisante**. La loss stagne aux alentours de ~4.5 et ne converge pas.
+
+**Causes probables identifiées :**
+
+1.  **Zones de flou dans la pipeline** : Il existe probablement des incohérences subtiles dans l'architecture ou le flux de données (connexion Encodeur-Décodeur, projections) que je n'ai pas réussi à identifier par manque d'expertise sur cette architecture spécifique.
+2.  **Matériel** : Les contraintes matérielles (GPU 8GB) limitent fortement la taille du batch et les capacités d'expérimentation, ce qui peut nuire à la stabilité de l'apprentissage.
+3.  **Complexité Architecturale** : J'ai mis un point d'honneur à reproduire fidèlement l'architecture exacte de DeepSeek-OCR. Cependant, cette complexité peut être un frein dans un contexte expérimental restreint. Une simplification de l'architecture pourrait améliorer les performances en réduisant les sources d'erreurs potentielles.
 
 ## Contribuer
 
@@ -152,15 +170,15 @@ Distribué sous la licence du projet. Voir `LICENSE.txt` pour les détails.
 
 Même si les modèles ne seront pas recodés from scratch, il est primordial d'en comprendre le fonctionnement en profondeur pour mener à bien l'implémentation de l'architecture.
 
-| Ressource                                                                                                                   | Description                                                          |
-| :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
-| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e) | Article Medium sur l'explication du modèle Segment Anything (SAM).             |
-| [DeepSeek-OCR GitHub](https://github.com/deepseek-ai/DeepSeek-OCR/tree/main)                                                | Dépôt GitHub officiel du projet DeepSeek-OCR.                        |
-| [SAM : Segment Anything – Meilleur Tutoriel](https://inside-machinelearning.com/sam-segment-anything/)                      | Tutoriel en français pour maîtriser SAM.                             |
-| [Segment Anything GitHub](https://github.com/facebookresearch/segment-anything)                                             | Dépôt GitHub officiel du projet Segment Anything de Meta.            |
-| [Sliding Window Attention](https://medium.com/@manojkumal/sliding-window-attention-565f963a1ffd)                            | Article Medium expliquant le mécanisme d'attention "Sliding Window". |
-| [What makes deepseek-ocr so powerful ?](https://learnopencv.com/what-makes-deepseek-ocr-so-powerful/)                       | Analyse par LearnOpenCV des forces de l'architecture DeepSeek-OCR.   |
-| [Documentation de SAM *(transformers)*](https://huggingface.co/docs/transformers/v4.57.1/en/model_doc/sam#transformers.SamImageProcessor)                                                   | Documentation du modèle SAM dans la librairie transformers  |
+| Ressource                                                                                                                                 | Description                                                          |
+| :---------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| [Segment Anything Model (SAM): Explained](https://medium.com/@utkarsh135/segment-anything-model-sam-explained-2900743cb61e)               | Article Medium sur l'explication du modèle Segment Anything (SAM).   |
+| [DeepSeek-OCR GitHub](https://github.com/deepseek-ai/DeepSeek-OCR/tree/main)                                                              | Dépôt GitHub officiel du projet DeepSeek-OCR.                        |
+| [SAM : Segment Anything – Meilleur Tutoriel](https://inside-machinelearning.com/sam-segment-anything/)                                    | Tutoriel en français pour maîtriser SAM.                             |
+| [Segment Anything GitHub](https://github.com/facebookresearch/segment-anything)                                                           | Dépôt GitHub officiel du projet Segment Anything de Meta.            |
+| [Sliding Window Attention](https://medium.com/@manojkumal/sliding-window-attention-565f963a1ffd)                                          | Article Medium expliquant le mécanisme d'attention "Sliding Window". |
+| [What makes deepseek-ocr so powerful ?](https://learnopencv.com/what-makes-deepseek-ocr-so-powerful/)                                     | Analyse par LearnOpenCV des forces de l'architecture DeepSeek-OCR.   |
+| [Documentation de SAM _(transformers)_](https://huggingface.co/docs/transformers/v4.57.1/en/model_doc/sam#transformers.SamImageProcessor) | Documentation du modèle SAM dans la librairie transformers           |
 
 <p align="center">
 	<img src="https://raw.githubusercontent.com/catppuccin/catppuccin/main/assets/footers/gray0_ctp_on_line.svg?sanitize=true" />

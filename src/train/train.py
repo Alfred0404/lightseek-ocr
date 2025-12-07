@@ -1,6 +1,5 @@
 """
 Training Script for LightSeek-OCR
-Optimized for RTX 3070 (8GB VRAM)
 """
 
 import os
@@ -29,9 +28,9 @@ def collate_fn(batch):
 def train():
     # --- Configuration ---
     BATCH_SIZE = 8  # Physical batch size (keep small for 8GB VRAM)
-    ACCUMULATION_STEPS = 8  # Effective batch size = 4 (More updates)
+    ACCUMULATION_STEPS = 8  # Effective batch size = 4
     LEARNING_RATE = 1e-4
-    EPOCHS = 30  # Increased from 5
+    EPOCHS = 30
 
     CHECKPOINT_DIR = "src/train/checkpoints"
     METRICS_DIR = "src/train/training_metrics"
@@ -40,7 +39,6 @@ def train():
     print(f"{bcolors.HEADER}Starting Training on {device}{bcolors.ENDC}")
 
     # --- Model ---
-    # Initialize with verbose=False to reduce noise during training
     model = LightSeekOCR(verbose=False).to(device)
 
     # --- Freezing Strategy ---
@@ -126,7 +124,7 @@ def train():
             image = images[0]  # BATCH_SIZE=1 assumption
             text = texts[0]
 
-            # 1. Extract Features
+            # Extract Features
             features = model.encoder.extract_features(image)
 
             # Flatten
@@ -159,7 +157,7 @@ def train():
 
             loss = outputs.loss / ACCUMULATION_STEPS
 
-            # Backward (No AMP)
+            # Backward
             loss.backward()
 
             if (i + 1) % ACCUMULATION_STEPS == 0:

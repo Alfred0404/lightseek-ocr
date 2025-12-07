@@ -141,7 +141,7 @@ class DeepEncoder:
             print("=" * 70)
             print(f"Input text: {text}\n")
 
-        # Step 1: Text to Image
+        # Text to Image
         if self.verbose:
             print(f"{bcolors.OKBLUE}[1/4] Rendering text to image...{bcolors.ENDC}")
         pil_image = self.text_to_image(text)
@@ -167,7 +167,7 @@ class DeepEncoder:
         Returns:
             dict with keys: local_features, global_features, compressed_features
         """
-        # Step 2: SAM Feature Extraction (Local Features)
+        # SAM Feature Extraction (Local Features)
         if self.verbose:
             print(
                 f"{bcolors.OKBLUE}[2/4] Extracting SAM features (local)...{bcolors.ENDC}"
@@ -176,7 +176,7 @@ class DeepEncoder:
         if self.verbose:
             print(f"  Local features shape: {local_features.shape}\n")
 
-        # Step 3: Feature Compression
+        # Feature Compression
         if self.verbose:
             print(f"{bcolors.OKBLUE}[3/4] Compressing features...{bcolors.ENDC}")
         compressed_map = self.compressor(local_features)
@@ -188,7 +188,7 @@ class DeepEncoder:
         if self.verbose:
             print(f"  After projection: {compressed_map.shape}\n")
 
-        # Step 4: CLIP Processing (Global Features)
+        # CLIP Processing (Global Features)
         if self.verbose:
             print(
                 f"{bcolors.OKBLUE}[4/4] Processing through CLIP (global)...{bcolors.ENDC}"

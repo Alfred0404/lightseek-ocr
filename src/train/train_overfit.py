@@ -34,9 +34,6 @@ def train_overfit():
     for param in model.encoder.clip_processor.model.parameters():
         param.requires_grad = False
 
-    # Freeze GPT-2 (Decoder) - OPTIONAL: You might want to freeze it or not
-    # For this specific request "train compressor", we should freeze GPT-2 too?
-    # The user said "ni clip, ni sam, ni gpt2". So we freeze GPT-2.
     for param in model.decoder.model.parameters():
         param.requires_grad = False
 
@@ -85,29 +82,29 @@ def train_overfit():
     while loss > loss_treshold:
         optimizer.zero_grad()
 
-        # 1. Extract Features
-        # We need to run the full extraction because we are training the compressor!
+        # Extract Features
+        # We need to run the full extraction because we are training the compressor
         # Gradients must flow back through extract_features -> compressor
         features = model.encoder.extract_features(image)
         compressed = features["compressed_features"]
         global_f = features["global_features"]
         local_f = compressed.flatten(2).permute(0, 2, 1)
 
-        # 2. Tokenize
+        # Tokenize
         tokenizer = model.decoder.tokenizer
         text_with_eos = text + tokenizer.eos_token
         text_inputs = tokenizer(
             text_with_eos, return_tensors="pt", padding=True, truncation=True
         ).to(device)
 
-        # 3. Labels
+        # Labels
         batch_size = text_inputs.input_ids.shape[0]
         visual_padding = torch.full(
             (batch_size, 512), -100, dtype=torch.long, device=device
         )
         labels = torch.cat([visual_padding, text_inputs.input_ids], dim=1)
 
-        # 4. Forward
+        # Forward
         outputs = model.decoder(
             local_features=local_f,
             global_features=global_f,
