@@ -52,6 +52,14 @@ Installer les dépendances :
 pip install -r requirements.txt
 ```
 
+Support gpu (cuda) :
+
+1. Installer cuda avec cet outil [tool](https://pytorch.org/get-started/locally/)
+2. Vérifier la version de cuda nécessaire
+   `nvidia-smi`
+3. Vérifier la version de cuda installée
+   `nvcc --version`
+
 ## Architecture
 
 LightSeek-OCR implémente un pipeline d'encodage modulaire inspiré de l'architecture DeepSeek-OCR. Le projet est structuré en composants indépendants pour faciliter l'expérimentation et la réutilisation.
