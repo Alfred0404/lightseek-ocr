@@ -114,11 +114,6 @@ class DeepEncoder:
         text_position = (10, 10)
         draw.text(text_position, text, fill=text_color, font=font)
 
-        # for testing purpose
-        image_path = "image.png"
-        if image_path is not None:
-            image = Image.open(image_path).convert("RGB")
-
         return image
 
     def encode(self, text: str) -> dict:

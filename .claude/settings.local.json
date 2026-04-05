@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": ["Bash(fc-list)"]
+  },
+  "skills": {
+    "directory": "~/.claude/skills"
+  }
+}

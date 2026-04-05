@@ -5,3 +5,4 @@ patchify
 Pillow
 numpy
 wonderwords
+torchvision

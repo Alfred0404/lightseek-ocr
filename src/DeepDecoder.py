@@ -143,15 +143,16 @@ class DeepDecoder(nn.Module):
 
         generated_ids = []
 
-        # Initial forward pass with visual features only
-        # We treat visual features as the "prompt" embeddings
+        # Initial forward pass with visual features only.
+        # Training sees [visual×512 | text_tokens]: position 511 predicts text_tokens[0].
+        # So feeding visual_embeds and taking logits[:, -1, :] is the correct alignment.
         outputs = self.model(inputs_embeds=visual_embeds)
         past_key_values = outputs.past_key_values
 
-        # Get the last token's logits to predict the first text token
+        # logits at position 511 → predicts first text token
         next_token_logits = outputs.logits[:, -1, :]
 
-        # Greedy or Sample
+        # Greedy for first token
         next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
         generated_ids.append(next_token)
 
