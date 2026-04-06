@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "allow": ["Bash(fc-list)"]
+    "allow": [
+      "Bash(fc-list)",
+      "Bash(mkdir -p docs scripts)",
+      "Bash(mv ARCHITECTURE_ANALYSIS.md PLAN_V2.md SESSION_RECAP.md docs/)",
+      "Bash(mv debug_data.py scripts/)",
+      "Bash(rm complete_pipeline.py src/main.py src/text_to_image.py image.png output_image.png PLAN.md TODO.md)"
+    ]
   },
   "skills": {
     "directory": "~/.claude/skills"

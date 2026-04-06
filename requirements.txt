@@ -6,3 +6,7 @@ Pillow
 numpy
 wonderwords
 torchvision
+peft
+accelerate
+datasets
+jiwer

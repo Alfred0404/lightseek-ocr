@@ -1,64 +1,104 @@
 """
 DeepDecoder
-Decodes visual features into text using a pretrained GPT-2 model.
+Decodes visual features into text using SmolLM2-1.7B-Instruct + LoRA.
+
+Architecture:
+  [local_features (B,256,768) | global_features (B,256,768)]
+      → visual_projection MLP (768 → 2048)
+      → [vision_tokens×512 | prompt_tokens | transcription_tokens]
+      → SmolLM2-1.7B (base frozen, LoRA on q/k/v/o)
+      → transcription
 """
 
 import torch
 import torch.nn as nn
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, infer_device
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import get_peft_model, LoraConfig, TaskType
 
 from utils.colors import bcolors
+
+_LORA_CONFIG = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+    lora_dropout=0.05,
+    bias="none",
+    task_type=TaskType.CAUSAL_LM,
+)
+
+_DEFAULT_PROMPT = "Transcribe the text visible in this document."
 
 
 class DeepDecoder(nn.Module):
     """
     Autoregressive Decoder for LightSeek-OCR.
-    Wraps a pretrained GPT-2 model and adapts it for visual-conditioned generation.
+    Wraps SmolLM2-1.7B-Instruct with LoRA and a visual projection MLP.
     """
 
-    def __init__(self, model_name="gpt2", device=None, verbose=True):
-        """
-        Initialize the DeepDecoder.
-
-        Args:
-            model_name: HuggingFace model name (default: "gpt2")
-            device: torch device
-            verbose: Print initialization details
-        """
+    def __init__(
+        self,
+        model_name: str = "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        device=None,
+        verbose: bool = True,
+        vision_hidden_size: int = 768,
+    ):
         super().__init__()
-        self.device = device if device is not None else infer_device()
+        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
         self.verbose = verbose
 
         if self.verbose:
-            print(
-                f"{bcolors.OKCYAN}Loading DeepDecoder (Base: {model_name})...{bcolors.ENDC}"
-            )
+            print(f"{bcolors.OKCYAN}Loading DeepDecoder ({model_name})...{bcolors.ENDC}")
 
-        # Load Tokenizer
-        self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-        # GPT-2 doesn't have a pad token by default, use eos_token
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        # --- Tokenizer ---
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Load Model
-        self.model = GPT2LMHeadModel.from_pretrained(model_name).to(self.device)
-        self.hidden_size = self.model.config.n_embd  # 768 for GPT-2 small
+        # --- LLM: load in fp16, then wrap with LoRA ---
+        base_model = AutoModelForCausalLM.from_pretrained(
+            model_name, torch_dtype=torch.float16
+        )
+        self.model = get_peft_model(base_model, _LORA_CONFIG)
+        self.model = self.model.to(self.device)
 
-        # Visual Projection Layer
-        # Projects visual features to the exact embedding space of the LLM
-        # Even if dims match (768->768), this layer helps align the feature distributions
-        # Upgraded to MLP for better capacity
+        self.hidden_size = self.model.config.hidden_size  # 2048 for SmolLM2-1.7B
+
+        # --- Visual Projection MLP: float32 for training stability ---
+        # Projects concatenated local+global features (B, 512, vision_hidden_size) → (B, 512, hidden_size)
         self.visual_projection = nn.Sequential(
-            nn.Linear(768, self.hidden_size * 4),
+            nn.Linear(vision_hidden_size, self.hidden_size * 2),
             nn.GELU(),
-            nn.Linear(self.hidden_size * 4, self.hidden_size),
+            nn.Linear(self.hidden_size * 2, self.hidden_size),
         ).to(self.device)
 
         if self.verbose:
-            print(
-                f"{bcolors.OKGREEN}DeepDecoder initialized on {self.device}{bcolors.ENDC}"
-            )
-            print(f"  - Vocab Size: {self.model.config.vocab_size}")
-            print(f"  - Hidden Size: {self.hidden_size}")
+            trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            total = sum(p.numel() for p in self.model.parameters())
+            print(f"{bcolors.OKGREEN}DeepDecoder ready on {self.device}{bcolors.ENDC}")
+            print(f"  - LLM hidden size : {self.hidden_size}")
+            print(f"  - LoRA trainable  : {trainable:,} / {total:,} ({trainable / total:.2%})")
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _embed_tokens(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """Return token embeddings (fp16) from the base model's embedding table."""
+        return self.model.get_input_embeddings()(input_ids)
+
+    def _project_visual(self, local_features: torch.Tensor, global_features: torch.Tensor) -> torch.Tensor:
+        """
+        Concatenate and project visual features.
+        Input : (B, 256, 768) + (B, 256, 768)
+        Output: (B, 512, 2048) in fp16
+        """
+        visual_cat = torch.cat([local_features, global_features], dim=1)  # (B, 512, 768)
+        projected = self.visual_projection(visual_cat.float())             # (B, 512, 2048) fp32
+        return projected.to(torch.float16)                                 # cast to fp16 for LLM
+
+    # ------------------------------------------------------------------
+    # Training forward
+    # ------------------------------------------------------------------
 
     def forward(
         self,
@@ -71,133 +111,90 @@ class DeepDecoder(nn.Module):
         """
         Forward pass for training.
 
+        Sequence layout:
+          inputs_embeds : [visual×512 | text (prompt + transcription)]
+          labels        : [-100×512   | -100×N_prompt | transcription_ids]
+
         Args:
-            local_features: SAM features (B, 256, 768)
-            global_features: CLIP features (B, 256, 768)
-            text_input_ids: Tokenized text (B, Seq_Len)
-            text_attention_mask: Attention mask for text (B, Seq_Len)
+            local_features     : (B, 256, 768) — SAM features via compressor
+            global_features    : (B, 256, 768) — CLIP features
+            text_input_ids     : (B, N_text)   — prompt + transcription token ids
+            text_attention_mask: (B, N_text)   — ones for all text tokens
+            labels             : (B, 512+N_text) — -100 for visual+prompt, ids for transcription
         """
+        visual_embeds = self._project_visual(local_features, global_features)  # (B, 512, 2048)
+        B, N_vis, _ = visual_embeds.shape
+        visual_mask = torch.ones((B, N_vis), dtype=torch.long, device=self.device)
 
-        # Project Visual Features
-        # Concatenate local and global features: (B, 512, 768)
-        visual_features = torch.cat([local_features, global_features], dim=1)
-        visual_embeds = self.visual_projection(visual_features)  # (B, 512, Hidden)
-
-        # Prepare Text Embeddings
         if text_input_ids is not None:
-            # Get text embeddings from GPT-2's embedding layer
-            wte = self.model.transformer.wte
-            text_embeds = wte(text_input_ids)  # (B, Seq_Len, Hidden)
-
-            # Concatenate: [Visual, Text]
-            # New sequence length = 512 + Seq_Len
+            text_embeds = self._embed_tokens(text_input_ids)  # (B, N_text, 2048) fp16
             inputs_embeds = torch.cat([visual_embeds, text_embeds], dim=1)
-
-            # Create Attention Mask
-            # Visual tokens are always attended to (1)
-            batch_size = visual_features.shape[0]
-            visual_mask = torch.ones(
-                (batch_size, visual_features.shape[1]),
-                dtype=torch.long,
-                device=self.device,
-            )
-
             if text_attention_mask is not None:
                 attention_mask = torch.cat([visual_mask, text_attention_mask], dim=1)
             else:
-                attention_mask = None
+                attention_mask = torch.cat(
+                    [visual_mask, torch.ones((B, text_input_ids.shape[1]), dtype=torch.long, device=self.device)],
+                    dim=1,
+                )
+        else:
+            inputs_embeds = visual_embeds
+            attention_mask = visual_mask
 
-            # Forward through GPT-2
-            # We use inputs_embeds instead of input_ids
-            outputs = self.model(
-                inputs_embeds=inputs_embeds,
-                attention_mask=attention_mask,
-                labels=labels,  # Pass labels to compute loss
-            )
+        return self.model(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            labels=labels,
+        )
 
-            return outputs
+    # ------------------------------------------------------------------
+    # Inference
+    # ------------------------------------------------------------------
 
     def decode(
         self,
         local_features: torch.Tensor,
         global_features: torch.Tensor,
-        max_new_tokens=50,
-        temperature=0.7,
-    ):
+        prompt: str = _DEFAULT_PROMPT,
+        max_new_tokens: int = 200,
+    ) -> list[str]:
         """
-        Decode visual features into text.
+        Generate transcription from visual features.
+
+        Returns a list of decoded strings (one per batch element).
         """
         self.model.eval()
+        with torch.no_grad():
+            visual_embeds = self._project_visual(local_features, global_features)
+            B, N_vis, _ = visual_embeds.shape
 
-        # Prepare Visual Context
-        visual_features = torch.cat([local_features, global_features], dim=1)
-        visual_embeds = self.visual_projection(visual_features)  # (B, 512, Hidden)
+            # Tokenise and embed the prompt
+            prompt_ids = self.tokenizer(
+                prompt, return_tensors="pt", add_special_tokens=False
+            ).input_ids.to(self.device)
+            prompt_embeds = self._embed_tokens(prompt_ids.expand(B, -1))  # (B, N_p, 2048)
 
-        batch_size = visual_features.shape[0]
-
-        # Start with [BOS] (or just start generation if model allows)
-        # GPT-2 doesn't have a standard BOS, but we can start with a prompt or empty
-        # Here we assume we start generating from scratch.
-        # We need to feed visual_embeds as 'past_key_values' or prefix.
-        # Simpler approach: Feed visual_embeds as the initial input sequence.
-
-        generated_ids = []
-
-        # Initial forward pass with visual features only.
-        # Training sees [visual×512 | text_tokens]: position 511 predicts text_tokens[0].
-        # So feeding visual_embeds and taking logits[:, -1, :] is the correct alignment.
-        outputs = self.model(inputs_embeds=visual_embeds)
-        past_key_values = outputs.past_key_values
-
-        # logits at position 511 → predicts first text token
-        next_token_logits = outputs.logits[:, -1, :]
-
-        # Greedy for first token
-        next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
-        generated_ids.append(next_token)
-
-        # Autoregressive loop
-        current_input_ids = next_token
-
-        for _ in range(max_new_tokens):
-            outputs = self.model(
-                input_ids=current_input_ids, past_key_values=past_key_values
+            # Prefix: [visual | prompt]
+            inputs_embeds = torch.cat([visual_embeds, prompt_embeds], dim=1)
+            attention_mask = torch.ones(
+                (B, inputs_embeds.shape[1]), dtype=torch.long, device=self.device
             )
 
-            past_key_values = outputs.past_key_values
-            next_token_logits = outputs.logits[:, -1, :] / temperature
+            generated = self.model.generate(
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
 
-            # Sample
-            probs = torch.softmax(next_token_logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)
-
-            generated_ids.append(next_token)
-            current_input_ids = next_token
-
-            # Stop if EOS (if we had one defined, GPT-2 uses EOS for PAD usually)
-            if next_token.item() == self.tokenizer.eos_token_id:
-                break
-
-        # Concatenate all generated tokens
-        generated_ids = torch.cat(generated_ids, dim=1)
-
-        # Decode
-        decoded_text = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True
-        )
-
-        return decoded_text
+        return self.tokenizer.batch_decode(generated, skip_special_tokens=True)
 
 
 if __name__ == "__main__":
-    # Test
     decoder = DeepDecoder()
-
-    # Dummy features
     B = 1
     local_f = torch.randn(B, 256, 768).to(decoder.device)
     global_f = torch.randn(B, 256, 768).to(decoder.device)
-
     print("Generating...")
     text = decoder.decode(local_f, global_f)
     print(f"Generated: {text}")
