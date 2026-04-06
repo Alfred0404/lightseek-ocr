@@ -1,6 +1,13 @@
 """
 Training Script for LightSeek-OCR
-Phase 1+2: SmolLM2-1.7B-Instruct + LoRA, SROIE dataset, transcription objective.
+Phase 1+2: SmolLM2-1.7B-Instruct + LoRA, IAM dataset, transcription objective.
+
+DATASET_NAME options:
+  "iam" | "cord" | "synthetic"  → raw images (encoder runs every step)
+  "cached"                       → pre-computed features (encoder skipped, ~×6 faster)
+
+To generate the cache first:
+  python scripts/precompute_features.py --dataset iam --split train --cache_dir data/cache
 """
 
 import os
@@ -24,9 +31,16 @@ from utils.colors import bcolors
 
 
 def collate_fn(batch):
-    images = [item[0] for item in batch]
-    texts = [item[1] for item in batch]
-    return images, texts
+    """Collate PIL images + text strings."""
+    return [item[0] for item in batch], [item[1] for item in batch]
+
+
+def collate_cached(batch):
+    """Collate pre-computed feature tensors + text strings."""
+    local_fs  = torch.stack([b[0] for b in batch])   # (B, 256, 768) fp16
+    global_fs = torch.stack([b[1] for b in batch])   # (B, 256, 768) fp16
+    texts = [b[2] for b in batch]
+    return local_fs, global_fs, texts
 
 
 def plot_loss(epoch_losses, loss_plot_path):
@@ -52,37 +66,36 @@ def plot_loss(epoch_losses, loss_plot_path):
 
 def train():
     # --- Configuration ---
-    DATASET_NAME = "iam"     # "iam" | "cord" | "synthetic"
-    BATCH_SIZE = 1           # Physical batch (SmolLM2 is large; 1 is safest on 8GB)
-    ACCUMULATION_STEPS = 32  # Effective batch = 32
+    DATASET_NAME = "cached"   # "cached" (fast) | "iam" | "cord" | "synthetic"
+    CACHE_DIR = "data/cache"  # only used when DATASET_NAME == "cached"
+    BATCH_SIZE = 4            # Physical batch; safe on 8GB with cached features
+    ACCUMULATION_STEPS = 8    # Effective batch = 32
     EPOCHS = 30
-    MAX_TEXT_TOKENS = 128    # Truncate transcription to this many tokens
+    MAX_TEXT_TOKENS = 128
 
     CHECKPOINT_DIR = "src/train/checkpoints"
     METRICS_DIR = "src/train/training_metrics"
+
+    USE_CACHE = DATASET_NAME == "cached"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"{bcolors.HEADER}Starting Training on {device}{bcolors.ENDC}")
 
     # --- Model ---
     model = LightSeekOCR(verbose=True)
-    # LightSeekOCR doesn't need .to(device) — each sub-module already placed its weights on device.
 
     # --- Freezing Strategy ---
     print(f"\n{bcolors.OKBLUE}Configuring Freezing Strategy...{bcolors.ENDC}")
 
-    # Freeze SAM
-    for param in model.encoder.sam_extractor.model.parameters():
-        param.requires_grad = False
-    print("  - SAM: Frozen")
+    if not USE_CACHE:
+        # Freeze SAM + CLIP only when running the encoder during training
+        for param in model.encoder.sam_extractor.model.parameters():
+            param.requires_grad = False
+        for param in model.encoder.clip_processor.model.parameters():
+            param.requires_grad = False
+        print("  - SAM: Frozen")
+        print("  - CLIP: Frozen")
 
-    # Freeze CLIP
-    for param in model.encoder.clip_processor.model.parameters():
-        param.requires_grad = False
-    print("  - CLIP: Frozen")
-
-    # SmolLM2 base weights are already frozen by get_peft_model (only LoRA trainable).
-    # Explicitly ensure compressor + channel_projection + visual_projection are trainable.
     for param in model.encoder.compressor.parameters():
         param.requires_grad = True
     for param in model.encoder.channel_projection.parameters():
@@ -97,30 +110,41 @@ def train():
     print(f"  - Total trainable: {trainable_params:,} / {all_params:,} ({trainable_params / all_params:.2%})")
 
     # --- Optimizer ---
-    # Differential LRs: visual projectors at 1e-4, LoRA at 5e-5
     lora_params = [p for p in model.decoder.model.parameters() if p.requires_grad]
-    optimizer = optim.AdamW([
-        {"params": model.encoder.compressor.parameters(),          "lr": 1e-4},
-        {"params": model.encoder.channel_projection.parameters(),  "lr": 1e-4},
-        {"params": model.decoder.visual_projection.parameters(),   "lr": 1e-4},
-        {"params": lora_params,                                    "lr": 5e-5},
-    ])
+    optimizer_groups = [
+        {"params": model.decoder.visual_projection.parameters(), "lr": 1e-4},
+        {"params": lora_params,                                  "lr": 5e-5},
+    ]
+    if not USE_CACHE:
+        optimizer_groups = [
+            {"params": model.encoder.compressor.parameters(),         "lr": 1e-4},
+            {"params": model.encoder.channel_projection.parameters(), "lr": 1e-4},
+        ] + optimizer_groups
+    optimizer = optim.AdamW(optimizer_groups)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
-    scaler = GradScaler()  # fp16 gradient scaling
+    scaler = GradScaler()
 
     # --- Dataset ---
     print(f"\n{bcolors.OKBLUE}Loading dataset '{DATASET_NAME}'...{bcolors.ENDC}")
-    dataset = build_dataset(name=DATASET_NAME, split="train")
+    if USE_CACHE:
+        dataset = build_dataset(name="cached", split="train", cache_dir=CACHE_DIR)
+        loader_collate = collate_cached
+    else:
+        dataset = build_dataset(name=DATASET_NAME, split="train")
+        loader_collate = collate_fn
+
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        collate_fn=collate_fn,
-        num_workers=0,  # 0 on Windows to avoid multiprocessing issues
+        collate_fn=loader_collate,
+        num_workers=0,
     )
     print(f"  - Dataset size: {len(dataset)} samples")
+    if USE_CACHE:
+        print(f"  - Mode: cached features (encoder skipped during training)")
 
-    # --- Pre-tokenise prompt (same for every sample) ---
+    # --- Pre-tokenise prompt ---
     tokenizer = model.decoder.tokenizer
     prompt_ids = tokenizer(
         TRANSCRIPTION_PROMPT,
@@ -149,18 +173,22 @@ def train():
 
         progress_bar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
-        for images, texts in progress_bar:
-            B = len(images)
+        for batch in progress_bar:
+            if USE_CACHE:
+                local_f, global_f, texts = batch
+                local_f  = local_f.to(device).float()   # (B, 256, 768)
+                global_f = global_f.to(device).float()  # (B, 256, 768)
+                B = local_f.shape[0]
+            else:
+                images, texts = batch
+                B = len(images)
+                with torch.no_grad():
+                    features   = model.encoder.extract_features_batch(images)
+                compressed = features["compressed_features"]              # (B, 768, 16, 16)
+                global_f   = features["global_features"]                  # (B, 256, 768)
+                local_f    = compressed.flatten(2).permute(0, 2, 1)      # (B, 256, 768)
 
-            # --- Batch encode (single forward through SAM + Compressor + CLIP) ---
-            with torch.no_grad():
-                features = model.encoder.extract_features_batch(images)
-
-            compressed = features["compressed_features"]                 # (B, 768, 16, 16)
-            global_f   = features["global_features"]                     # (B, 256, 768)
-            local_f    = compressed.flatten(2).permute(0, 2, 1)         # (B, 256, 768)
-
-            # --- Batch tokenise transcriptions (pad to same length) ---
+            # --- Tokenise transcriptions ---
             text_inputs = tokenizer(
                 [t + tokenizer.eos_token for t in texts],
                 return_tensors="pt",
@@ -168,28 +196,22 @@ def train():
                 truncation=True,
                 max_length=MAX_TEXT_TOKENS,
             ).to(device)
-            # text_inputs.input_ids      : (B, N_max)
-            # text_inputs.attention_mask : (B, N_max)  — 0 on padding positions
 
-            # Labels: padding positions → -100 (ignored by loss)
             labels_text = text_inputs.input_ids.clone()
             labels_text[text_inputs.attention_mask == 0] = -100
 
-            # Combined text input to decoder: [prompt | transcription]
             combined_text_ids  = torch.cat([prompt_ids.expand(B, -1), text_inputs.input_ids], dim=1)
             combined_text_mask = torch.cat([
                 torch.ones((B, N_prompt), dtype=torch.long, device=device),
                 text_inputs.attention_mask,
             ], dim=1)
 
-            # Labels: [-100×N_visual | -100×N_prompt | text_labels (with -100 on padding)]
             labels = torch.cat([
                 torch.full((B, N_visual), -100, dtype=torch.long, device=device),
                 torch.full((B, N_prompt), -100, dtype=torch.long, device=device),
                 labels_text,
             ], dim=1)
 
-            # --- Forward with fp16 autocast ---
             with autocast(device_type="cuda"):
                 outputs = model.decoder(
                     local_features=local_f,
@@ -217,10 +239,9 @@ def train():
 
             progress_bar.set_postfix({
                 "loss": f"{epoch_loss / max(n_samples, 1):.4f}",
-                "lr_vis": f"{optimizer.param_groups[0]['lr']:.2e}",
+                "lr": f"{optimizer.param_groups[0]['lr']:.2e}",
             })
 
-        # Flush leftover gradients
         if step % ACCUMULATION_STEPS != 0:
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(
