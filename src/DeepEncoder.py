@@ -151,6 +151,27 @@ class DeepEncoder:
             "compressed_features": features["compressed_features"],
         }
 
+    def extract_features_batch(self, pil_images: list) -> dict:
+        """
+        Extract visual features from a batch of PIL images in a single forward pass.
+
+        Args:
+            pil_images: list of PIL Images
+
+        Returns:
+            dict with keys: local_features (B,256,768), compressed_features (B,768,16,16),
+                            global_features (B,256,768)
+        """
+        local_features  = self.sam_extractor.extract_batch(pil_images)   # (B, 256, 64, 64)
+        compressed_map  = self.compressor(local_features)                  # (B, 1024, 16, 16)
+        compressed_map  = self.channel_projection(compressed_map)          # (B, 768, 16, 16)
+        global_features = self.clip_processor.process_compressed_features(compressed_map)  # (B, 256, 768)
+        return {
+            "local_features":      local_features,
+            "compressed_features": compressed_map,
+            "global_features":     global_features,
+        }
+
     def extract_features(self, pil_image: Image.Image) -> dict:
         """
         Extract visual features from an image (without text rendering step).

@@ -33,6 +33,24 @@ class SAMFeatureExtractor:
             [transforms.Resize((1024, 1024)), transforms.ToTensor()]
         )
 
+    def extract_batch(self, pil_images: list) -> torch.Tensor:
+        """
+        Extract features from a batch of PIL images.
+
+        Args:
+            pil_images: list of PIL Images (RGB)
+
+        Returns:
+            Feature map tensor of shape (B, 256, 64, 64)
+        """
+        tensors = torch.stack(
+            [self.transform(img.convert("RGB")) for img in pil_images]
+        ).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(tensors)
+            return outputs.last_hidden_state  # (B, 256, 64, 64)
+
     def extract(self, pil_image: Image.Image) -> torch.Tensor:
         """
         Extract features from PIL image

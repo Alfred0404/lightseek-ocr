@@ -81,15 +81,12 @@ class CLIPVisionProcessor:
         tokens = compressed_map.flatten(2).permute(0, 2, 1)
         num_tokens = tokens.shape[1]
 
-        print(f"  Input tokens shape: {tokens.shape}")
-
         # Get positional embeddings from CLIP
         position_embedding = self.vision_model.embeddings.position_embedding.weight
         expected_num_pos = position_embedding.shape[0]
 
         # Interpolate positional embeddings to match our token count
         if num_tokens != expected_num_pos:
-            print(f"  Interpolating pos embeddings: {expected_num_pos} -> {num_tokens}")
             pos_embed_interpolated = self._interpolate_pos_embedding(
                 position_embedding, num_tokens
             )

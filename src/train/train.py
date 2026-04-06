@@ -150,60 +150,70 @@ def train():
         progress_bar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{EPOCHS}", leave=False)
 
         for images, texts in progress_bar:
-            for image, text in zip(images, texts):
-                # --- Encoder (no grad needed — SAM/CLIP frozen) ---
-                with torch.no_grad():
-                    features = model.encoder.extract_features(image)
+            B = len(images)
 
-                compressed = features["compressed_features"]                    # (1, 768, 16, 16)
-                global_f   = features["global_features"]                        # (1, 256, 768)
-                local_f    = compressed.flatten(2).permute(0, 2, 1)            # (1, 256, 768)
+            # --- Batch encode (single forward through SAM + Compressor + CLIP) ---
+            with torch.no_grad():
+                features = model.encoder.extract_features_batch(images)
 
-                # --- Tokenise transcription ---
-                text_ids = tokenizer(
-                    text + tokenizer.eos_token,
-                    return_tensors="pt",
-                    truncation=True,
-                    max_length=MAX_TEXT_TOKENS,
-                ).input_ids.to(device)
-                N_text = text_ids.shape[1]
+            compressed = features["compressed_features"]                 # (B, 768, 16, 16)
+            global_f   = features["global_features"]                     # (B, 256, 768)
+            local_f    = compressed.flatten(2).permute(0, 2, 1)         # (B, 256, 768)
 
-                # Combined text input to decoder: [prompt | transcription]
-                combined_text_ids = torch.cat(
-                    [prompt_ids, text_ids], dim=1
-                )  # (1, N_prompt + N_text)
-                combined_text_mask = torch.ones_like(combined_text_ids)
+            # --- Batch tokenise transcriptions (pad to same length) ---
+            text_inputs = tokenizer(
+                [t + tokenizer.eos_token for t in texts],
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=MAX_TEXT_TOKENS,
+            ).to(device)
+            # text_inputs.input_ids      : (B, N_max)
+            # text_inputs.attention_mask : (B, N_max)  — 0 on padding positions
 
-                # Labels: [-100×N_visual | -100×N_prompt | transcription_ids]
-                visual_ignore  = torch.full((1, N_visual), -100, dtype=torch.long, device=device)
-                prompt_ignore  = torch.full((1, N_prompt), -100, dtype=torch.long, device=device)
-                labels = torch.cat([visual_ignore, prompt_ignore, text_ids], dim=1)
+            # Labels: padding positions → -100 (ignored by loss)
+            labels_text = text_inputs.input_ids.clone()
+            labels_text[text_inputs.attention_mask == 0] = -100
 
-                # --- Forward with fp16 autocast ---
-                with autocast(device_type="cuda"):
-                    outputs = model.decoder(
-                        local_features=local_f,
-                        global_features=global_f,
-                        text_input_ids=combined_text_ids,
-                        text_attention_mask=combined_text_mask,
-                        labels=labels,
-                    )
+            # Combined text input to decoder: [prompt | transcription]
+            combined_text_ids  = torch.cat([prompt_ids.expand(B, -1), text_inputs.input_ids], dim=1)
+            combined_text_mask = torch.cat([
+                torch.ones((B, N_prompt), dtype=torch.long, device=device),
+                text_inputs.attention_mask,
+            ], dim=1)
 
-                loss = outputs.loss / ACCUMULATION_STEPS
-                scaler.scale(loss).backward()
+            # Labels: [-100×N_visual | -100×N_prompt | text_labels (with -100 on padding)]
+            labels = torch.cat([
+                torch.full((B, N_visual), -100, dtype=torch.long, device=device),
+                torch.full((B, N_prompt), -100, dtype=torch.long, device=device),
+                labels_text,
+            ], dim=1)
 
-                epoch_loss += outputs.loss.item()
-                n_samples += 1
-                step += 1
+            # --- Forward with fp16 autocast ---
+            with autocast(device_type="cuda"):
+                outputs = model.decoder(
+                    local_features=local_f,
+                    global_features=global_f,
+                    text_input_ids=combined_text_ids,
+                    text_attention_mask=combined_text_mask,
+                    labels=labels,
+                )
 
-                if step % ACCUMULATION_STEPS == 0:
-                    scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        [p for p in model.parameters() if p.requires_grad], max_norm=1.0
-                    )
-                    scaler.step(optimizer)
-                    scaler.update()
-                    optimizer.zero_grad()
+            loss = outputs.loss / ACCUMULATION_STEPS
+            scaler.scale(loss).backward()
+
+            epoch_loss += outputs.loss.item() * B
+            n_samples  += B
+            step       += 1
+
+            if step % ACCUMULATION_STEPS == 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    [p for p in model.parameters() if p.requires_grad], max_norm=1.0
+                )
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
 
             progress_bar.set_postfix({
                 "loss": f"{epoch_loss / max(n_samples, 1):.4f}",

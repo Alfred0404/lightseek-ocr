@@ -1,0 +1,254 @@
+<svg viewBox="0 0 1380 650" xmlns="http://www.w3.org/2000/svg" width="1380" height="650">
+  <title>LightSeek-OCR Architecture Pipeline</title>
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+    </style>
+    <filter id="shadow-sm" x="-5%" y="-5%" width="115%" height="125%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/>
+    </filter>
+    <filter id="shadow-md" x="-8%" y="-8%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#00000022"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#94A3B8"/>
+    </marker>
+    <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10B981"/>
+    </marker>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#E2E8F0" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1380" height="650" fill="#FFFFFF"/>
+  <rect width="1380" height="650" fill="url(#grid)" opacity="0.6"/>
+
+  <!-- ═══════════════════════════════════════════
+       TITLE
+  ═══════════════════════════════════════════ -->
+  <text x="40" y="44" font-size="18" font-weight="700" fill="#1E293B">LightSeek-OCR — Architecture Pipeline</text>
+  <text x="40" y="64" font-size="12" font-weight="400" fill="#64748B">SAM + Conv2D + CLIP visual encoders  →  Visual Projection MLP  →  SmolLM2-1.7B + LoRA  →  Transcription</text>
+  <line x1="40" y1="72" x2="570" y2="72" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- ═══════════════════════════════════════════
+       SECTION LABELS
+  ═══════════════════════════════════════════ -->
+  <!-- Visual Encoders label (spans SAM + Compressor + CLIP: x=152 to x=518) -->
+  <text x="335" y="108" font-size="9" font-weight="600" fill="#3B82F6" text-anchor="middle" letter-spacing="0.8">VISUAL ENCODERS</text>
+  <line x1="152" y1="114" x2="518" y2="114" stroke="#3B82F6" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+  <!-- Adapter label -->
+  <text x="822" y="108" font-size="9" font-weight="600" fill="#F97316" text-anchor="middle" letter-spacing="0.8">ADAPTER</text>
+  <line x1="742" y1="114" x2="902" y2="114" stroke="#F97316" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+  <!-- LLM Decoder label -->
+  <text x="1073" y="108" font-size="9" font-weight="600" fill="#8B5CF6" text-anchor="middle" letter-spacing="0.8">LLM DECODER</text>
+  <line x1="960" y1="114" x2="1186" y2="114" stroke="#8B5CF6" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 1 — Document Image  (x=20 y=264 w=100 h=72)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="20" y="264" width="100" height="72" rx="10" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1.5"/>
+  </g>
+  <text x="70" y="291" font-size="12" font-weight="600" fill="#92400E" text-anchor="middle">Document</text>
+  <text x="70" y="307" font-size="12" font-weight="600" fill="#92400E" text-anchor="middle">Image</text>
+  <text x="70" y="323" font-size="9" fill="#B45309" text-anchor="middle">1024 × 1024 px</text>
+
+  <!-- Arrow: Image → SAM -->
+  <line x1="120" y1="300" x2="152" y2="300" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 2 — SAM ViT-Base  (x=152 y=228 w=162 h=144)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="152" y="228" width="162" height="144" rx="10" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5"/>
+    <rect x="152" y="228" width="4"   height="144" rx="2"  fill="#3B82F6"/>
+  </g>
+  <text x="172" y="256" font-size="13" font-weight="600" fill="#1E3A5F">SAM ViT-Base</text>
+  <text x="172" y="272" font-size="10" fill="#3B82F6">91M params</text>
+  <rect x="172" y="279" width="48" height="17" rx="8" fill="#DBEAFE"/>
+  <text x="196" y="291" font-size="9" font-weight="600" fill="#1D4ED8" text-anchor="middle">Frozen</text>
+  <line x1="168" y1="304" x2="307" y2="304" stroke="#BFDBFE" stroke-width="1"/>
+  <text x="172" y="318" font-size="9" font-weight="500" fill="#475569">Output:</text>
+  <text x="172" y="332" font-size="9" fill="#64748B">(B, 256, 64, 64)</text>
+  <text x="172" y="348" font-size="9" fill="#64748B">local feature maps</text>
+  <text x="172" y="362" font-size="9" fill="#94A3B8">256 channels · 64×64 spatial</text>
+
+  <!-- Arrow: SAM → Compressor + shape annotation -->
+  <line x1="314" y1="300" x2="358" y2="300" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="336" y="284" font-size="8" fill="#64748B" text-anchor="middle">(B, 256, 64, 64)</text>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 3 — Conv2D Compressor  (x=358 y=246 w=160 h=108)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="358" y="246" width="160" height="108" rx="10" fill="#FFF7ED" stroke="#F97316" stroke-width="1.5"/>
+    <rect x="358" y="246" width="4"   height="108" rx="2"  fill="#F97316"/>
+  </g>
+  <text x="378" y="272" font-size="13" font-weight="600" fill="#7C2D12">Conv2D Compressor</text>
+  <text x="378" y="287" font-size="10" fill="#F97316">64×64 → 16×16  (×10 compression)</text>
+  <rect x="378" y="294" width="62" height="17" rx="8" fill="#FED7AA"/>
+  <text x="409" y="306" font-size="9" font-weight="600" fill="#9A3412" text-anchor="middle">Trainable</text>
+  <line x1="374" y1="318" x2="511" y2="318" stroke="#FED7AA" stroke-width="1"/>
+  <text x="378" y="332" font-size="9" fill="#64748B">(B, 768, 16, 16)</text>
+  <text x="378" y="346" font-size="9" fill="#64748B">256 compressed tokens</text>
+
+  <!-- Arrow: Compressor → Concat (local path, upper, y=282) -->
+  <line x1="518" y1="282" x2="574" y2="282" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="546" y="264" font-size="8" fill="#64748B" text-anchor="middle">(B, 256, 768)</text>
+  <text x="546" y="254" font-size="7.5" fill="#94A3B8" text-anchor="middle">flatten + permute</text>
+
+  <!-- Arrow: Compressor ↓ CLIP (dashed vertical, x=438) -->
+  <line x1="438" y1="354" x2="438" y2="410" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+  <text x="452" y="380" font-size="8" fill="#64748B">(B, 768, 16, 16)</text>
+  <text x="452" y="392" font-size="7.5" fill="#94A3B8">bypasses patch emb.</text>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 4 — CLIP ViT-Base  (x=358 y=410 w=160 h=108)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="358" y="410" width="160" height="108" rx="10" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5"/>
+    <rect x="358" y="410" width="4"   height="108" rx="2"  fill="#3B82F6"/>
+  </g>
+  <text x="378" y="436" font-size="13" font-weight="600" fill="#1E3A5F">CLIP ViT-Base</text>
+  <text x="378" y="452" font-size="10" fill="#3B82F6">600M params</text>
+  <rect x="378" y="459" width="48" height="17" rx="8" fill="#DBEAFE"/>
+  <text x="402" y="471" font-size="9" font-weight="600" fill="#1D4ED8" text-anchor="middle">Frozen</text>
+  <line x1="374" y1="483" x2="511" y2="483" stroke="#BFDBFE" stroke-width="1"/>
+  <text x="378" y="497" font-size="9" fill="#64748B">(B, 256, 768)</text>
+  <text x="378" y="511" font-size="9" fill="#64748B">global features</text>
+
+  <!-- Arrow: CLIP → Concat (L-shape: right→up→right) -->
+  <!-- From CLIP right edge (518, 464) → right to x=554 → up to y=322 → right to Concat left (574, 322) -->
+  <path d="M 518,464 L 554,464 L 554,322 L 574,322"
+        fill="none" stroke="#94A3B8" stroke-width="1.5"
+        stroke-linejoin="round" stroke-linecap="round"
+        marker-end="url(#arrow)"/>
+  <text x="568" y="452" font-size="8" fill="#64748B">(B, 256, 768)</text>
+  <text x="568" y="440" font-size="7.5" fill="#94A3B8">global</text>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 5 — Concat  (x=574 y=262 w=112 h=84)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="574" y="262" width="112" height="84" rx="10" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+  </g>
+  <text x="630" y="289" font-size="12" font-weight="600" fill="#334155" text-anchor="middle">Concat</text>
+  <text x="630" y="305" font-size="9" fill="#64748B" text-anchor="middle">local (256)</text>
+  <text x="630" y="319" font-size="9" fill="#64748B" text-anchor="middle">+ global (256)</text>
+  <text x="630" y="336" font-size="9" font-weight="700" fill="#334155" text-anchor="middle">= 512 tokens</text>
+
+  <!-- Arrow: Concat → Visual Projection -->
+  <line x1="686" y1="304" x2="742" y2="304" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="714" y="288" font-size="8" fill="#64748B" text-anchor="middle">(B, 512, 768)</text>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 6 — Visual Projection MLP  (x=742 y=246 w=158 h=108)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="742" y="246" width="158" height="108" rx="10" fill="#FFF7ED" stroke="#F97316" stroke-width="1.5"/>
+    <rect x="742" y="246" width="4"   height="108" rx="2"  fill="#F97316"/>
+  </g>
+  <text x="762" y="272" font-size="13" font-weight="600" fill="#7C2D12">Visual Projection</text>
+  <text x="762" y="287" font-size="10" fill="#F97316">MLP  768 → 2048</text>
+  <rect x="762" y="294" width="62" height="17" rx="8" fill="#FED7AA"/>
+  <text x="793" y="306" font-size="9" font-weight="600" fill="#9A3412" text-anchor="middle">Trainable</text>
+  <line x1="758" y1="318" x2="893" y2="318" stroke="#FED7AA" stroke-width="1"/>
+  <text x="762" y="332" font-size="9" fill="#64748B">Adapts features to</text>
+  <text x="762" y="346" font-size="9" fill="#64748B">SmolLM2 hidden dim</text>
+
+  <!-- Arrow: Visual Projection → SmolLM2 -->
+  <line x1="900" y1="300" x2="960" y2="300" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="930" y="284" font-size="8" fill="#64748B" text-anchor="middle">(B, 512, 2048)</text>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 7 — SmolLM2-1.7B + LoRA  (x=960 y=188 w=226 h=234)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-md)">
+    <rect x="960" y="188" width="226" height="234" rx="12" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="2"/>
+    <rect x="960" y="188" width="5"   height="234" rx="2"  fill="#8B5CF6"/>
+  </g>
+
+  <!-- Title -->
+  <text x="978" y="213" font-size="13" font-weight="700" fill="#3B0764">SmolLM2-1.7B-Instruct</text>
+  <text x="978" y="229" font-size="10" fill="#7C3AED">1.7B params · hidden: 2048</text>
+
+  <!-- Divider -->
+  <line x1="974" y1="238" x2="1179" y2="238" stroke="#DDD6FE" stroke-width="1"/>
+
+  <!-- Sequence layout -->
+  <text x="978" y="251" font-size="8" font-weight="500" fill="#64748B">Input sequence layout:</text>
+  <!-- Vision tokens -->
+  <rect x="978" y="256" width="88" height="22" rx="4" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>
+  <text x="1022" y="271" font-size="8" font-weight="600" fill="#92400E" text-anchor="middle">vision ×512</text>
+  <!-- Prompt -->
+  <rect x="1066" y="256" width="44" height="22" rx="4" fill="#EEF2FF" stroke="#6366F1" stroke-width="1"/>
+  <text x="1088" y="271" font-size="8" font-weight="500" fill="#3730A3" text-anchor="middle">prompt</text>
+  <!-- Transcription -->
+  <rect x="1110" y="256" width="66" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>
+  <text x="1143" y="271" font-size="8" font-weight="500" fill="#065F46" text-anchor="middle">transcription</text>
+
+  <!-- Labels mask -->
+  <text x="978" y="292" font-size="7.5" fill="#94A3B8">labels:  [−100 ×512  |  −100 ×N_p  |  token_ids]</text>
+
+  <!-- Divider -->
+  <line x1="974" y1="302" x2="1179" y2="302" stroke="#DDD6FE" stroke-width="1"/>
+
+  <!-- LoRA info -->
+  <text x="978" y="318" font-size="11" font-weight="600" fill="#5B21B6">LoRA r=16  ·  q, k, v, o</text>
+  <!-- Badges -->
+  <rect x="978"  y="324" width="86" height="17" rx="8" fill="#EDE9FE"/>
+  <text x="1021" y="336" font-size="9" font-weight="600" fill="#5B21B6" text-anchor="middle">LoRA: Trainable</text>
+  <rect x="1072" y="324" width="80" height="17" rx="8" fill="#DBEAFE"/>
+  <text x="1112" y="336" font-size="9" font-weight="600" fill="#1D4ED8" text-anchor="middle">Base: Frozen</text>
+
+  <!-- Divider -->
+  <line x1="974" y1="349" x2="1179" y2="349" stroke="#DDD6FE" stroke-width="1"/>
+
+  <!-- Stats -->
+  <text x="978" y="364" font-size="9" fill="#64748B">~5M trainable params (LoRA adapters)</text>
+  <text x="978" y="379" font-size="9" fill="#64748B">Autoregressive · fp16 · greedy decode</text>
+  <text x="978" y="394" font-size="9" fill="#64748B">Causal LM · KV cache · 2048 context</text>
+
+  <!-- Arrow: SmolLM2 → Output (emerald) -->
+  <line x1="1186" y1="305" x2="1246" y2="305" stroke="#10B981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 8 — Transcription  (x=1246 y=268 w=118 h=76)
+  ═══════════════════════════════════════════ -->
+  <g filter="url(#shadow-sm)">
+    <rect x="1246" y="268" width="118" height="76" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+  </g>
+  <text x="1305" y="296" font-size="12" font-weight="600" fill="#065F46" text-anchor="middle">Transcription</text>
+  <text x="1305" y="313" font-size="9" fill="#059669" text-anchor="middle">generated text</text>
+  <text x="1305" y="330" font-size="9" fill="#94A3B8" text-anchor="middle">CER target &lt; 20%</text>
+
+  <!-- ═══════════════════════════════════════════
+       LEGEND
+  ═══════════════════════════════════════════ -->
+  <g transform="translate(40, 556)">
+    <rect width="820" height="70" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow-sm)"/>
+    <text x="16" y="20" font-size="10" font-weight="600" fill="#64748B">LEGEND</text>
+
+    <!-- Row 1 -->
+    <rect x="16"  y="28" width="14" height="14" rx="3" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1"/>
+    <text x="36"  y="39" font-size="10" fill="#1E293B">Frozen (SAM, CLIP, SmolLM2 base weights)</text>
+    <rect x="316" y="28" width="14" height="14" rx="3" fill="#FFF7ED" stroke="#F97316" stroke-width="1"/>
+    <text x="336" y="39" font-size="10" fill="#1E293B">Trainable (Compressor, Visual Projection)</text>
+    <rect x="616" y="28" width="14" height="14" rx="3" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>
+    <text x="636" y="39" font-size="10" fill="#1E293B">Input / Output</text>
+
+    <!-- Row 2 -->
+    <rect x="16"  y="48" width="14" height="14" rx="3" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1"/>
+    <text x="36"  y="59" font-size="10" fill="#1E293B">LoRA adapters — r=16, q/k/v/o, ~5M params</text>
+    <line x1="316" y1="52" x2="330" y2="52" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="336" y="59" font-size="10" fill="#1E293B">Tensor shape annotation</text>
+    <line x1="516" y1="52" x2="530" y2="52" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <text x="536" y="59" font-size="10" fill="#1E293B">Feature bypass (e.g. patch emb. skip)</text>
+  </g>
+
+</svg>
