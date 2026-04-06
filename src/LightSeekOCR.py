@@ -6,7 +6,6 @@ Combines DeepEncoder (Image → Visual Features) and DeepDecoder (Visual Feature
 
 import torch
 import torch.nn as nn
-from transformers import infer_device
 
 from DeepEncoder import DeepEncoder
 from DeepDecoder import DeepDecoder
@@ -29,7 +28,7 @@ class LightSeekOCR(nn.Module):
         verbose: bool = True,
     ):
         super().__init__()
-        self.device = device if device is not None else infer_device()
+        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
         self.verbose = verbose
 
         if self.verbose:

@@ -6,7 +6,7 @@ Extracts visual features using SAM vision encoder
 import torch
 from PIL import Image
 from torchvision import transforms
-from transformers import SamVisionModel, infer_device
+from transformers import SamVisionModel
 import math
 import numpy as np
 
@@ -17,7 +17,7 @@ class SAMFeatureExtractor:
     """Extract visual features using SAM vision encoder"""
 
     def __init__(self, model_name="facebook/sam-vit-base", device=None):
-        self.device = device if device is not None else infer_device()
+        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
         print(
             f"{bcolors.OKCYAN}Loading SAM model on device: {self.device}{bcolors.ENDC}"
         )

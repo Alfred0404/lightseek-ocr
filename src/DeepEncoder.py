@@ -9,7 +9,6 @@ Complete LightSeek-OCR encoding pipeline:
 
 import torch
 from PIL import Image, ImageDraw, ImageFont
-from transformers import infer_device
 import torch.nn as nn
 
 
@@ -45,7 +44,7 @@ class DeepEncoder:
             device: torch device (auto-detected if None)
             verbose: Print progress information
         """
-        self.device = device if device is not None else infer_device()
+        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
         self.verbose = verbose
 
         if self.verbose:

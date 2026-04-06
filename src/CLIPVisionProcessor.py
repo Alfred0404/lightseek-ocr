@@ -5,7 +5,7 @@ Processes compressed features through CLIP vision encoder, bypassing embedding l
 
 import torch
 import torch.nn.functional as F
-from transformers import CLIPModel, infer_device
+from transformers import CLIPModel
 
 from utils.colors import bcolors
 
@@ -14,7 +14,7 @@ class CLIPVisionProcessor:
     """Process compressed features through CLIP vision encoder"""
 
     def __init__(self, model_name="openai/clip-vit-base-patch32", device=None):
-        self.device = device if device is not None else infer_device()
+        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
         print(
             f"{bcolors.OKCYAN}Loading CLIP model on device: {self.device}{bcolors.ENDC}"
         )
